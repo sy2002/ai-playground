@@ -10,3 +10,10 @@ My solution [rl-q-rbf-cartpole.py](rl-q-rbf-cartpole.py) uses a Radial Basis Fun
 to transform the four features of the Cart (Cart Position, Cart Velocity, Pole Angle and Pole Velocity At Tip)
 into a large amount of distances from the centers of RBF "Exemplars" and then use Linear Regression
 to learn the Value Function using Q-Learning.
+
+### RBFSampler actually is not using any Radial Basis Functions (RBFs)
+
+As a naive beginner, I thought that scikit-learn's RBFSampler is basically a convenient way
+to create a collection (or "network") of multiple Radial Basis Functions with random centers. Well, I
+was wrong as [RBFSampler-Experiment.ipynb](RBFSampler-Experiment.ipynb) shows, but in the end,
+everything is still kind of as you would expect from the name RBFSampler.

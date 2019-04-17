@@ -42,7 +42,8 @@ from sklearn.preprocessing import StandardScaler
 # On RBFSampler:
 #
 # Despite its name, the RBFSampler is actually not using any RBFs inside. I did some experiments about
-# this fact. Go to [@TODO LINK] to learn more.
+# this fact. Go to https://github.com/sy2002/ai-playground/blob/master/RBFSampler-Experiment.ipynb 
+# to learn more.
 
 RBF_EXEMPLARS       = 250           # amount of exemplars per "gamma instance" of the RBF network
 RBF_GAMMA_COUNT     = 10            # amount of "gamma instances", i.e. RBF_EXEMPLARS x RBF_GAMMA_COUNT features
