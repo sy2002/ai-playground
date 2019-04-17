@@ -17,3 +17,6 @@ As a naive beginner, I thought that scikit-learn's RBFSampler is basically a con
 to create a collection (or "network") of multiple Radial Basis Functions with random centers. Well, I
 was wrong as [RBFSampler-Experiment.ipynb](RBFSampler-Experiment.ipynb) shows, but in the end,
 everything is still kind of as you would expect from the name RBFSampler.
+
+You can also try the experiment live and interactively on Kaggle using
+[this Kaggle Kernel](https://www.kaggle.com/sy2002/rbfsampler-actually-is-not-using-any-rbfs).
