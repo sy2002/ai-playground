@@ -109,7 +109,7 @@ rbfs = FeatureUnion(transformer_list)     #union of all RBF exemplar's output
 # we use one Linear Regression per possible action to model the Value Function for this action,
 # so rbf_net is a list; SGDRegressor allows step-by-step regression using partial_fit, which
 # is exactly what we need to learn
-rbf_net = [SGDRegressor(eta0=ALPHA, power_t=ALPHA_DECAY, learning_rate='invscaling', max_iter=5, tol=None)
+rbf_net = [SGDRegressor(eta0=ALPHA, power_t=ALPHA_DECAY, learning_rate='invscaling', max_iter=5, tol=float("-inf"))
            for i in range(len(env_actions))]
 
 # transform the 4 features (Cart Position, Cart Velocity, Pole Angle and Pole Velocity At Tip)

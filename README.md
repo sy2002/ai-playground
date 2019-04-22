@@ -1,5 +1,23 @@
 ## ai-playground
+
 Unsorted Playground for Machine Learning, Reinforcement Learning and other AI Experiments.
+
+### Install the dependencies
+
+`requirements.txt` contains the dependencies of all ai-playground programs. You might
+want to create a virtual environment for sparing your local Python installation. Switch
+to the root folder of `ai-playgound` and enter the following commands:
+
+```
+python3 -m venv ai-p-env
+source ai-p-env/bin/activate
+pip install -r requirements.txt
+```
+
+When the virtual environment is activated, `pip` and `python` should now point to
+a Python 3 installation and you should be able to run the programs using `python`. You
+can activate the environment at any later moment in time using `source ai-p-env/bin/activate`
+from the project's root folder.
 
 ### OpenAI Gym's CartPole
 

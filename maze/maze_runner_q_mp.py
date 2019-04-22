@@ -6,7 +6,7 @@
 # "mrunner_q_p_*.png": shows the result
 #
 # Assumptions to make it more "realistic" than the "godmode" dynamic
-# programming version that you find in my other source "maze_runner_py":
+# programming version that you find in my other source "maze_runner.py":
 # 
 # 1. We do not initialze the Q function with all possible states at
 #    the beginning, as we are not "knowing" them, yet, but we do so

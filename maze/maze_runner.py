@@ -13,8 +13,8 @@ import maze_generator
 import numpy as np
 
 # maze size
-mx = 20
-my = 20
+mx = 40
+my = 40
 
 # imgage size
 img_dx = 500
