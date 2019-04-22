@@ -9,11 +9,12 @@ specify the amount of pixels of the output image. Here is an example maze featur
 
 ### Main Files
 
-* `maze_runner.py`: Generates a random maze and then uses a uniform random walk policy and
-  the Iterative Policy Evaluation algorithm to solve the maze. The empty maze and the solution
+* `maze_runner.py`: Generates a random maze and then uses a **Uniform Random Walk Policy** and
+  the **Iterative Policy Evaluation** algorithm to solve the maze. The empty maze and the solution
   is stored as a result a series of PNG images.
-* `maze_runner_q_mp.py`: Generates a random maze and then uses Q-Learning to solve the maze.
-  The results are a numbered series of PNG files. Assumptions to make it more "realistic"
+* `maze_runner_q_mp.py`: Generates a random maze and then uses **Q-Learning** to solve the maze.
+  This version of the solution also utilizes Python's multi-processing capabilities to speed-up
+  image saving. The results are a numbered series of PNG files. Assumptions to make it more "realistic"
   than the "godmode" dynamic programming version that you find in the other source `maze_runner.py`
 
 ### Helper Files
