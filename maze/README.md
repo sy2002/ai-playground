@@ -1,6 +1,6 @@
 ## Maze
 
-Using Reinforcement-Learning to solve mazes of arbitrary sizes. Use the variables `mx` and `my`
+Using Reinforcement Learning to solve mazes of arbitrary sizes. Use the variables `mx` and `my`
 in the Python code to configure the mazes' size in blocks and use `img_dx` and `img_dy` to
 specify the amount of pixels of the output image. Here is an example maze featuring
 40x40 blocks in 500x500 pixels:

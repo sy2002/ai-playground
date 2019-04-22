@@ -22,7 +22,7 @@ from the project's root folder.
 ### Solve Mazes
 
 The programs `maze_runner.py` and `maze_runner_q_mp.py` in the folder [Maze](maze) are
-using Reinforcement-Learning to solve mazes of arbitrary sizes.
+using Reinforcement Learning to solve mazes of arbitrary sizes.
 Have a look at these [Demos](http://www.sy2002.de/maze) to get an idea.
 
 ### OpenAI Gym's CartPole
