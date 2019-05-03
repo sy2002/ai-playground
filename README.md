@@ -25,6 +25,12 @@ The programs `maze_runner.py` and `maze_runner_q_mp.py` in the folder [Maze](maz
 using Reinforcement Learning to solve mazes of arbitrary sizes.
 Have a look at these [Demos](http://www.sy2002.de/maze) to get an idea.
 
+### Handwritten Digits Recognizer using a Perceptron Network
+
+This project was my first attempt to learn how a Perceptron works by implementing it from scratch.
+I used the very well known MIST dataset to do handwritten digits recognition. Go to the
+[HWD-Perceptron Repository](https://github.com/sy2002/HWD-Perceptron) to learn more.
+
 ### OpenAI Gym's CartPole
 
 [OpenAI Gym](https://gym.openai.com/) is a fantastic place to practice Reinforment Learning.
