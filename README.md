@@ -21,9 +21,9 @@ from the project's root folder.
 
 ### Handwritten Digits Recognizer using a Perceptron Network
 
-This project was my first attempt to learn how a Perceptron works by implementing it from scratch.
-I used the very well known MIST dataset to do handwritten digits recognition. Go to the
-[HWD-Perceptron Repository](https://github.com/sy2002/HWD-Perceptron) to learn more.
+The HWD-Perceptron project was my first attempt to learn how a Perceptron works by implementing
+it from scratch. I used the very well known MIST dataset to do handwritten digits recognition. Go
+to the [HWD-Perceptron Repository](https://github.com/sy2002/HWD-Perceptron) to learn more.
 
 ### Solve Mazes
 
