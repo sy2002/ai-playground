@@ -19,17 +19,17 @@ a Python 3 installation and you should be able to run the programs using `python
 can activate the environment at any later moment in time using `source ai-p-env/bin/activate`
 from the project's root folder.
 
-### Solve Mazes
-
-The programs `maze_runner.py` and `maze_runner_q_mp.py` in the folder [Maze](maze) are
-using Reinforcement Learning to solve mazes of arbitrary sizes.
-Have a look at these [Demos](http://www.sy2002.de/maze) to get an idea.
-
 ### Handwritten Digits Recognizer using a Perceptron Network
 
 This project was my first attempt to learn how a Perceptron works by implementing it from scratch.
 I used the very well known MIST dataset to do handwritten digits recognition. Go to the
 [HWD-Perceptron Repository](https://github.com/sy2002/HWD-Perceptron) to learn more.
+
+### Solve Mazes
+
+The programs `maze_runner.py` and `maze_runner_q_mp.py` in the folder [Maze](maze) are
+using Reinforcement Learning to solve mazes of arbitrary sizes.
+Have a look at these [Demos](http://www.sy2002.de/maze) to get an idea.
 
 ### OpenAI Gym's CartPole
 
