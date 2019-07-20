@@ -122,9 +122,11 @@ def transform_val(val):
     return np.array([val]).ravel()
 
 # SGDRegressor needs "partial_fit" to be called before the first "predict" is called
-# so let's do that with random (dummy) values for state and action
+# so let's do that for all actions (aka entries in the rbf_net list) with random (dummy) values
+# for the state and the Value Function
 for net in rbf_net:
-    net.partial_fit(transform_s(env.reset()), transform_val(np.random.choice(env_actions)))
+    random_val_func = np.random.rand() * np.random.randint(1, 100) # random float 0 < x < 100
+    net.partial_fit(transform_s(env.reset()), transform_val(random_val_func))
 
 # get the result of the Value Function for action a taken in state s
 def get_Q_s_a(s, a):
