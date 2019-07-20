@@ -8,6 +8,7 @@
 # inspired by Lecture 17 of Udemy/Lazy Programmer Inc/Advanced AI: Deep Reinforcement Learning
 #
 # done by sy2002 on 11th of August 2018 and tuned on 17th of April 2019
+# added the Disturb-Mode on 20th of July 2019
 
 import gym
 import gym.spaces
@@ -62,8 +63,8 @@ EPSILON_DECAY_m     = 4             # every episode % EPSILON_DECAY_m == 0, we i
 
 PROBE               = 20            # after how many episodes we will print the status
 
-print("\nCartPole-v1 solver by sy2002 on 17th of April 2019")
-print("==================================================\n")
+print("\nCartPole-v1 solver by sy2002 on 20th of July 2019")
+print("=================================================\n")
 print("Sampling observation space by playing", RBF_SAMPLING, "random episodes...")
 
 
@@ -226,6 +227,15 @@ for episode in range(LEARN_EPISODES + 1):
 # now, after we learned how to balance the pole: test it and use the visual output of Gym
 print("\nTest:")
 print("=====\n")
+
+# use DISTURB_PROB to switch a probabilistic system disturbance:
+# if you set it to a value larger then 0.0, the system will be disturbed
+# with this probability for an amount of steps given by DISTURB_DURATION
+DISTURB_PROB = 0.00
+DISTURB_DURATION = 5        # needs to be at least 1; suggestion: try 5 in combination with 0.01 probability
+
+if DISTURB_PROB > 0.0:
+    print("Disturb-Mode ON! Probability = %0.4f  Duration = %d\n" % (DISTURB_PROB, DISTURB_DURATION))
 print("Episode\tSteps\tResult")
 
 all_steps = 0
@@ -235,11 +245,22 @@ for episode in range(TEST_EPISODES):
     done = False
     won = False
     episode_step_count = 0
+    dist_ongoing = 0
+
     # we are ignoring Gym's "done" function, so that we can run the system longer
     while observation[0] > -2.4 and observation[0] < 2.4 and episode_step_count < 5000:
         episode_step_count += 1
         all_steps += 1
+
         a, _ = max_Q_s(observation)
+        if DISTURB_PROB > 0.0:            
+            if dist_ongoing == 0 and np.random.rand() > (1.0 - DISTURB_PROB):
+                dist_ongoing = DISTURB_DURATION
+            if dist_ongoing > 0:
+                print("\tstep #%d:\tdisturbance ongoing: %d" % (episode_step_count, dist_ongoing))
+                dist_ongoing -= 1
+                a = np.random.choice(env_actions)
+
         observation, _, done, _ = env.step(a)
         env.render()
     
