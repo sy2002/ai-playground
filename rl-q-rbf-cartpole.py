@@ -58,7 +58,7 @@ ALPHA               = 0.75          # initial learning rate
 ALPHA_DECAY         = 0.10          # learning rate decay
 EPSILON             = 0.5           # randomness for epsilon-greedy algorithm (explore vs exploit)
 EPSILON_DECAY_t     = 0.1
-EPSILON_DECAY_m     = 8             # every episode % EPSILON_DECAY_m == 0, we increase EPSILON_DECAY_t
+EPSILON_DECAY_m     = 4             # every episode % EPSILON_DECAY_m == 0, we increase EPSILON_DECAY_t
 
 PROBE               = 20            # after how many episodes we will print the status
 
