@@ -75,7 +75,7 @@ RBF_SAMPLING        = 100           # amount of episodes to learn for initializi
 
 CLBR_RND_EPISODES   = 500           # during calibration: number of random episodes
 CLBR_LEARN_EPISODES = 120           # during calibration: number of learning episodes
-LEARN_EPISODES      = 220           # real learning: # of episodes to learn
+LEARN_EPISODES      = 100           # real learning: # of episodes to learn
 TEST_EPISODES       = 10            # software only: # of episodes  we use the visual rendering to test what we learned
 GAMMA               = 0.999         # discount factor for Q-Learning
 ALPHA               = 0.75          # initial learning rate
@@ -301,19 +301,15 @@ def rl_max_Q_s(s):
     return max_idx, max_val
 
 def rl_learn(learning_duration, record_observations=False):
-    t                   = 1.0           # used to decay epsilon
-    won_last_interval   = 0             # for statistical purposes
-    steps_last_interval = 0             # dito
-
-    episode_step_max = 0
-    episode_step_count = 0
-
-    print("Episode\t\t\tAvg. Steps\t\tMax Steps\t\tepsilon")
-
     if record_observations:
         recorded_obs = []
     else:
         recorded_obs = None
+
+    print("Episode\t\tMean Steps\tMedian Steps\tMin. Steps\tMax. Steps\tEpsilon")
+
+    t = 1.0                             # used to decay epsilon
+    probe_episode_step_count = []       # used for probe stats: mean, median, min, max
 
     for episode in range(learning_duration + 1):
         # let epsilon decay over time
@@ -321,17 +317,12 @@ def rl_learn(learning_duration, record_observations=False):
             t += EPSILON_DECAY_t
 
         # each episode starts again at the begining
-        s, a = env_reset()
-        
-        if episode_step_max < episode_step_count:
-            episode_step_max = episode_step_count
-
+        s, a = env_reset()        
         episode_step_count = 0
         done = False
 
         while not done:
             episode_step_count += 1
-            steps_last_interval += 1
 
             # epsilon-greedy: do a random move with the decayed EPSILON probability
             p = np.random.random()
@@ -366,16 +357,15 @@ def rl_learn(learning_duration, record_observations=False):
             a = a2        
 
         # every PROBEth episode: print status info
+        probe_episode_step_count.append(episode_step_count)
         if episode % PROBE == 0:
-            if episode == 0:
-                probe_divisor = 1
-                episode_step_max = episode_step_count
-            else:
-                probe_divisor = PROBE
-            print("%d\t\t\t%0.2f\t\t\t%d\t\t\t%0.4f" % (episode, steps_last_interval / probe_divisor, episode_step_max, eps))
-            won_last_interval   = 0
-            steps_last_interval = 0
-            episode_step_max    = 0
+            print("%d\t\t%0.2f\t\t%0.2f\t\t%d\t\t%d\t\t%0.4f\t%d" % (   episode, 
+                                                                        np.mean(probe_episode_step_count),
+                                                                        np.median(probe_episode_step_count),
+                                                                        np.min(probe_episode_step_count),
+                                                                        np.max(probe_episode_step_count),
+                                                                        eps))
+            probe_episode_step_count = []
 
     return recorded_obs
 
@@ -444,7 +434,7 @@ DISTURB_DURATION = 5        # needs to be at least 1; suggestion: try 5 in combi
 
 if DISTURB_PROB > 0.0:
     print("Disturb-Mode ON! Probability = %0.4f  Duration = %d\n" % (DISTURB_PROB, DISTURB_DURATION))
-print("Episode\tSteps\tResult")
+print("Episode\tDstb\tResult")
 
 all_steps = 0
 for episode in range(TEST_EPISODES):
@@ -467,7 +457,7 @@ for episode in range(TEST_EPISODES):
             if dist_ongoing > 0:
                 print("\tstep #%d:\tdisturbance ongoing: %d" % (episode_step_count, dist_ongoing))
                 dist_ongoing -= 1
-                a = np.random.choice(env_actions)
+                a = env_random_action()
 
         observation, _, done = env_step(a)
         env_render()
