@@ -7,3 +7,5 @@ Analog part done by vaxman on 2019-07-27
 Digital part done by sy2002 on 2019-07-27
 
 TODO: Write a better README.md
+
+![Analog-Paradigm-Model-1](doc/ model-1-with-program.jpg)
