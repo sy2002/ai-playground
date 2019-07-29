@@ -8,7 +8,7 @@
 
 # if you don't have a Model-1 at hand, set SOFTWARE_ONLY to True
 # to use a software based physics simulation by OpenAI Gym
-SOFTWARE_ONLY     = True
+SOFTWARE_ONLY     = False
 
 print("\nAnalog Cartpole - A hybrid analog/digital computing experiment")
 print("==============================================================\n")
@@ -75,7 +75,7 @@ RBF_SAMPLING        = 100           # amount of episodes to learn for initializi
 
 CLBR_RND_EPISODES   = 500           # during calibration: number of random episodes
 CLBR_LEARN_EPISODES = 120           # during calibration: number of learning episodes
-LEARN_EPISODES      = 100           # real learning: # of episodes to learn
+LEARN_EPISODES      = 500           # real learning: # of episodes to learn
 TEST_EPISODES       = 10            # software only: # of episodes  we use the visual rendering to test what we learned
 GAMMA               = 0.999         # discount factor for Q-Learning
 ALPHA               = 0.75          # initial learning rate
