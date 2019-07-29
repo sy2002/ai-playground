@@ -359,12 +359,12 @@ def rl_learn(learning_duration, record_observations=False):
         # every PROBEth episode: print status info
         probe_episode_step_count.append(episode_step_count)
         if episode % PROBE == 0:
-            print("%d\t\t%0.2f\t\t%0.2f\t\t%d\t\t%d\t\t%0.4f\t%d" % (   episode, 
-                                                                        np.mean(probe_episode_step_count),
-                                                                        np.median(probe_episode_step_count),
-                                                                        np.min(probe_episode_step_count),
-                                                                        np.max(probe_episode_step_count),
-                                                                        eps))
+            print("%d\t\t%0.2f\t\t%0.2f\t\t%d\t\t%d\t\t%0.4f" % (   episode, 
+                                                                    np.mean(probe_episode_step_count),
+                                                                    np.median(probe_episode_step_count),
+                                                                    np.min(probe_episode_step_count),
+                                                                    np.max(probe_episode_step_count),
+                                                                    eps))
             probe_episode_step_count = []
 
     return recorded_obs
