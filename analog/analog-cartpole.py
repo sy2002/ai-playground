@@ -221,6 +221,14 @@ def env_step(action_to_be_done):
         done = abs(observation[0]) > 0.9 or abs(observation[2]) > 1.0  
     return observation, r, done
 
+#visual display of the environment's output on the digital computer's screen
+def env_render():
+    if SOFTWARE_ONLY:
+        env.render()
+    else:
+        print("ERROR #3: env_render(): NOT IMPLEMENTED, YET.")
+        sys.exit(3)
+       
 # ----------------------------------------------------------------------------
 # Reinforcement Learning Core
 # ----------------------------------------------------------------------------
@@ -234,7 +242,7 @@ rbf_net     = None
 # transform the 4 features (Cart Position, Cart Velocity, Pole Angle and Pole Velocity At Tip)
 # into RBF_EXEMPLARS x RBF_GAMMA_COUNT distances from the RBF centers ("Exemplars")
 def rl_transform_s(s):
-    if scaler == None:
+    if scaler == None:  # during calibration, we do not have a scaler, yet
         return rbfs.transform(np.array(s).reshape(1, -1))
     else:
         return rbfs.transform(scaler.transform(np.array(s).reshape(1, -1)))
@@ -292,7 +300,7 @@ def rl_max_Q_s(s):
             max_idx = a
     return max_idx, max_val
 
-def rl_learn(learning_duration):
+def rl_learn(learning_duration, record_observations=False):
     t                   = 1.0           # used to decay epsilon
     won_last_interval   = 0             # for statistical purposes
     steps_last_interval = 0             # dito
@@ -301,6 +309,11 @@ def rl_learn(learning_duration):
     episode_step_count = 0
 
     print("Episode\t\t\tAvg. Steps\t\tMax Steps\t\tepsilon")
+
+    if record_observations:
+        recorded_obs = []
+    else:
+        recorded_obs = None
 
     for episode in range(learning_duration + 1):
         # let epsilon decay over time
@@ -329,6 +342,8 @@ def rl_learn(learning_duration):
             # exploit or explore and collect reward
             observation, r, done = env_step(a)            
             s2 = observation
+            if record_observations:
+                recorded_obs.append(observation)
 
             # Q-Learning
             old_qsa = rl_get_Q_s_a(s, a)
@@ -362,6 +377,8 @@ def rl_learn(learning_duration):
             steps_last_interval = 0
             episode_step_max    = 0
 
+    return recorded_obs
+
 # ----------------------------------------------------------------------------
 # Calibration
 # ----------------------------------------------------------------------------
@@ -369,10 +386,10 @@ def rl_learn(learning_duration):
 print("Calibrating:")
 print("============\n")
 
-env_prepare()
-rl_init()
+env_prepare()   # setup the environment (either analog or digital)
+rl_init()       # init and clear the RL "brain"
+clbr_res = []   # contains all observation samples taken during calibration
 
-clbr_res = []
 print("Performing %d random episodes..." % CLBR_RND_EPISODES, end="")
 episode_counts = []
 for i in range(CLBR_RND_EPISODES):
@@ -387,14 +404,16 @@ for i in range(CLBR_RND_EPISODES):
 print("\b\b\b: Done. %0.2f average steps per episode" % np.mean(episode_counts))
 
 print("Performing %d uncalibrated learning episodes:\n" % CLBR_LEARN_EPISODES)
-rl_learn(CLBR_LEARN_EPISODES)
+clbr_res += rl_learn(CLBR_LEARN_EPISODES, record_observations=True)
 
-scaler = StandardScaler() # create scaler and fit it to the sampled observation space
+# create scaler and fit it to the sampled observation space
+scaler = StandardScaler() 
 scaler.fit(clbr_res)
+
 print("\nCalibration done. Samples taken: %d" % scaler.n_samples_seen_)
-print("    Mean:     ", scaler.mean_)
-print("    Variance: ", scaler.var_)
-print("    Scale:    ", scaler.scale_)
+print("    Mean:     %+2.8f %+2.8f %+2.8f %+2.8f" % tuple(scaler.mean_))
+print("    Variance: %+2.8f %+2.8f %+2.8f %+2.8f" % tuple(scaler.var_))
+print("    Scale:    %+2.8f %+2.8f %+2.8f %+2.8f" % tuple(scaler.scale_))
 
 # ----------------------------------------------------------------------------
 # Learning
@@ -429,8 +448,8 @@ print("Episode\tSteps\tResult")
 
 all_steps = 0
 for episode in range(TEST_EPISODES):
-    observation = env.reset()
-    env.render()
+    observation, _ = env_reset()
+    env_render()
     done = False
     won = False
     episode_step_count = 0
@@ -441,7 +460,7 @@ for episode in range(TEST_EPISODES):
         episode_step_count += 1
         all_steps += 1
 
-        a, _ = max_Q_s(observation)
+        a, _ = rl_max_Q_s(observation)
         if DISTURB_PROB > 0.0:            
             if dist_ongoing == 0 and np.random.rand() > (1.0 - DISTURB_PROB):
                 dist_ongoing = DISTURB_DURATION
@@ -450,8 +469,8 @@ for episode in range(TEST_EPISODES):
                 dist_ongoing -= 1
                 a = np.random.choice(env_actions)
 
-        observation, _, done, _ = env.step(a)
-        env.render()
+        observation, _, done = env_step(a)
+        env_render()
     
     print("%d\t\t%d\t\t" % (episode, episode_step_count))
 
