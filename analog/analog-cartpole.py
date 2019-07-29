@@ -78,7 +78,7 @@ RBF_SAMPLING        = 100           # amount of episodes to learn for initializi
 
 CLBR_RND_EPISODES   = 500           # during calibration: number of random episodes
 CLBR_LEARN_EPISODES = 120           # during calibration: number of learning episodes
-LEARN_EPISODES      = 500           # real learning: # of episodes to learn
+LEARN_EPISODES      = 600           # real learning: # of episodes to learn
 TEST_EPISODES       = 10            # software only: # of episodes  we use the visual rendering to test what we learned
 TEST_MAX_STEPS      = 5000          # maximum amount of steps during test/execution phase
 
@@ -126,7 +126,13 @@ def hc_res2float(str):
 
 # ask for a value and give the system 1ms to return it
 def hc_ask_for_value(addr):
-    hc_send(HC_CMD_GETVAL + addr)
+    # TODO validate educated guess and learn why:
+    # for some timing reason we need to send the command first
+    # and then the address in another send, otherwise the
+    # hardware performs not stable, so we cannot do:
+    # hc_send(HC_CMD_GETVAL + addr)
+    hc_send(HC_CMD_GETVAL)
+    hc_send(addr)
     sleep(0.001)
 
 # Ask for the 4 relevant values that the simulation state consists of
@@ -262,6 +268,7 @@ def rl_save(filename):
         print("ERROR #4: Error saving RL model.")
         sys.exit(4)
 
+# load the model
 def rl_load(filename):
     global scaler, rbfs, rbf_net
     try:
@@ -416,6 +423,7 @@ def main_calibrate():
     clbr_res = []   # contains all observation samples taken during calibration
 
     print("Performing %d random episodes..." % CLBR_RND_EPISODES, end="")
+    sys.stdout.flush()  # necessary to make sure we see the printed strint immediatelly
     episode_counts = []
     for i in range(CLBR_RND_EPISODES):
         env_reset()
