@@ -1,10 +1,12 @@
+#!/usr/bin/env python3
+#
 # ANALOG-CARTPOLE - A hybrid analog/digital computing experiment
 #
 # Use digital Reinforcement Learning (RL) to learn to balance an inverse pendulum
 # on a cart simulated by a Model-1 by Analog Paradigm (http://analogparadigm.com)
 #
-# Analog part done by vaxman on 2019-07-27
-# Digital part done by sy2002 on 2019-07-27
+# Analog part done by vaxman on 2019-07-27, 2019-07-28
+# Digital part done by sy2002 on 2019-07-27, 2019-07-29
 
 # if you don't have a Model-1 at hand, set SOFTWARE_ONLY to True
 # to use a software based physics simulation by OpenAI Gym
@@ -17,6 +19,7 @@ import numpy as np
 import serial
 import sys
 
+from joblib import dump, load
 from readchar import readchar
 from time import sleep
 
@@ -28,7 +31,7 @@ from sklearn.preprocessing import StandardScaler
 if (SOFTWARE_ONLY):
     import gym
     import gym.spaces
-    print("WARNING: Software-only mode. No analog computer is being used.\n")
+    print("WARNING: Software-only mode. No analog computer is being used.")
 
 # ----------------------------------------------------------------------------
 # Analog Setup
@@ -77,6 +80,8 @@ CLBR_RND_EPISODES   = 500           # during calibration: number of random episo
 CLBR_LEARN_EPISODES = 120           # during calibration: number of learning episodes
 LEARN_EPISODES      = 500           # real learning: # of episodes to learn
 TEST_EPISODES       = 10            # software only: # of episodes  we use the visual rendering to test what we learned
+TEST_MAX_STEPS      = 5000          # maximum amount of steps during test/execution phase
+
 GAMMA               = 0.999         # discount factor for Q-Learning
 ALPHA               = 0.75          # initial learning rate
 ALPHA_DECAY         = 0.10          # learning rate decay
@@ -170,9 +175,9 @@ def hc_influence_sim(a):
 
 env = None
 
-# list of possible actions that the RL agent can perform in the environment
-# for the algorithm, it doesn't matter if 0 means right and 1 left or vice versa or if
-# there are more than two possible actions
+# List of possible actions that the RL agent can perform in the environment.
+# For the algorithm, it doesn't matter if 0 means right and 1 left or vice versa
+# or if # there are more than two possible actions
 env_actions = [0, 1] # needs to be in ascending order with no gaps, e.g. [0, 1]
 
 def env_random_action():
@@ -209,7 +214,15 @@ def env_reset():
         s = hc_get_sim_state()
     return s, env_random_action()
 
-#perform action and return observation, reward and "done" flag
+# evaluate, if an episode is over
+def env_is_done(observation):
+    if SOFTWARE_ONLY:
+        return abs(observation[0]) > 2.4
+    else:
+        # episode done, if x-position [0] or angle [2] invalid
+        return abs(observation[0]) > 0.9 or abs(observation[2]) > 1.0
+
+# perform action and return observation, reward and "done" flag
 def env_step(action_to_be_done):
     if SOFTWARE_ONLY:
         observation, r, done, _ = env.step(action_to_be_done)
@@ -217,17 +230,17 @@ def env_step(action_to_be_done):
         hc_influence_sim(action_to_be_done)
         observation = hc_get_sim_state()
         r = 1 # reward each "timestep" with a 1 to reward longevity
-        # episode done, if x-position [0] or angle [1] invalid
-        done = abs(observation[0]) > 0.9 or abs(observation[2]) > 1.0  
+        done = env_is_done(observation)  
     return observation, r, done
 
-#visual display of the environment's output on the digital computer's screen
+# visual display of the environment's output on the digital computer's screen
 def env_render():
     if SOFTWARE_ONLY:
         env.render()
-    else:
-        print("ERROR #3: env_render(): NOT IMPLEMENTED, YET.")
-        sys.exit(3)
+
+def env_close():
+    if SOFTWARE_ONLY:
+        env.close()
        
 # ----------------------------------------------------------------------------
 # Reinforcement Learning Core
@@ -238,6 +251,26 @@ gammas      = None
 models      = None
 rbfs        = None
 rbf_net     = None
+
+# save the model
+def rl_save(filename):
+    try:
+        dump(scaler,    filename + ".scaler")
+        dump(rbfs,      filename + ".rbfs")
+        dump(rbf_net,   filename + ".rbfnet")
+    except:
+        print("ERROR #4: Error saving RL model.")
+        sys.exit(4)
+
+def rl_load(filename):
+    global scaler, rbfs, rbf_net
+    try:
+        scaler  = load(filename + ".scaler")
+        rbfs    = load(filename + ".rbfs")
+        rbf_net = load(filename + ".rbfnet")
+    except:
+        print("ERROR #5: Error loading RL model.")
+        sys.exit(5)
 
 # transform the 4 features (Cart Position, Cart Velocity, Pole Angle and Pole Velocity At Tip)
 # into RBF_EXEMPLARS x RBF_GAMMA_COUNT distances from the RBF centers ("Exemplars")
@@ -373,96 +406,142 @@ def rl_learn(learning_duration, record_observations=False):
 # Calibration
 # ----------------------------------------------------------------------------
 
-print("Calibrating:")
-print("============\n")
+def main_calibrate():
+    global scaler
 
-env_prepare()   # setup the environment (either analog or digital)
-rl_init()       # init and clear the RL "brain"
-clbr_res = []   # contains all observation samples taken during calibration
+    print("\nCalibrate:")
+    print("==========\n")
 
-print("Performing %d random episodes..." % CLBR_RND_EPISODES, end="")
-episode_counts = []
-for i in range(CLBR_RND_EPISODES):
-    env_reset()
-    episode_count = 0
-    done = False
-    while not done:
-        observation, r, done = env_step(env_random_action())
-        clbr_res.append(observation)
-        episode_count += 1
-    episode_counts.append(episode_count)
-print("\b\b\b: Done. %0.2f average steps per episode" % np.mean(episode_counts))
+    rl_init()       # init and clear the RL "brain"
+    clbr_res = []   # contains all observation samples taken during calibration
 
-print("Performing %d uncalibrated learning episodes:\n" % CLBR_LEARN_EPISODES)
-clbr_res += rl_learn(CLBR_LEARN_EPISODES, record_observations=True)
+    print("Performing %d random episodes..." % CLBR_RND_EPISODES, end="")
+    episode_counts = []
+    for i in range(CLBR_RND_EPISODES):
+        env_reset()
+        episode_count = 0
+        done = False
+        while not done:
+            observation, r, done = env_step(env_random_action())
+            clbr_res.append(observation)
+            episode_count += 1
+        episode_counts.append(episode_count)
+    print("\b\b\b: Done. %0.2f average steps per episode" % np.mean(episode_counts))
 
-# create scaler and fit it to the sampled observation space
-scaler = StandardScaler() 
-scaler.fit(clbr_res)
+    print("Performing %d uncalibrated learning episodes:\n" % CLBR_LEARN_EPISODES)
+    clbr_res += rl_learn(CLBR_LEARN_EPISODES, record_observations=True)
 
-print("\nCalibration done. Samples taken: %d" % scaler.n_samples_seen_)
-print("    Mean:     %+2.8f %+2.8f %+2.8f %+2.8f" % tuple(scaler.mean_))
-print("    Variance: %+2.8f %+2.8f %+2.8f %+2.8f" % tuple(scaler.var_))
-print("    Scale:    %+2.8f %+2.8f %+2.8f %+2.8f" % tuple(scaler.scale_))
+    # create scaler and fit it to the sampled observation space
+    scaler = StandardScaler() 
+    scaler.fit(clbr_res)
+
+    print("\nCalibration done. Samples taken: %d" % scaler.n_samples_seen_)
+    print("    Mean:     %+2.8f %+2.8f %+2.8f %+2.8f" % tuple(scaler.mean_))
+    print("    Variance: %+2.8f %+2.8f %+2.8f %+2.8f" % tuple(scaler.var_))
+    print("    Scale:    %+2.8f %+2.8f %+2.8f %+2.8f" % tuple(scaler.scale_))
 
 # ----------------------------------------------------------------------------
 # Learning
 # ----------------------------------------------------------------------------
 
-print("\nLearn:")
-print("======\n")
-rl_init()
-rl_learn(LEARN_EPISODES)
+def main_learn(save_file):
+    print("\nLearn:")
+    print("======\n")
 
-if not SOFTWARE_ONLY:
-    print("")
-    sys.exit(0)
+    rl_init()
+    rl_learn(LEARN_EPISODES)
+
+    if save_file:
+        rl_save(save_file)
 
 # ----------------------------------------------------------------------------
 # Testing
 # ----------------------------------------------------------------------------
 
-# now, after we learned how to balance the pole: test it and use the visual output of Gym
-print("\nTest:")
-print("=====\n")
+def main_test(test_duration):
+    print("\nTest:")
+    print("=====\n")
+    print("Episode\t\tResult")
 
-# use DISTURB_PROB to switch a probabilistic system disturbance:
-# if you set it to a value larger then 0.0, the system will be disturbed
-# with this probability for an amount of steps given by DISTURB_DURATION
-DISTURB_PROB = 0.00
-DISTURB_DURATION = 5        # needs to be at least 1; suggestion: try 5 in combination with 0.01 probability
-
-if DISTURB_PROB > 0.0:
-    print("Disturb-Mode ON! Probability = %0.4f  Duration = %d\n" % (DISTURB_PROB, DISTURB_DURATION))
-print("Episode\tDstb\tResult")
-
-all_steps = 0
-for episode in range(TEST_EPISODES):
-    observation, _ = env_reset()
-    env_render()
-    done = False
-    won = False
-    episode_step_count = 0
-    dist_ongoing = 0
-
-    # we are ignoring Gym's "done" function, so that we can run the system longer
-    while observation[0] > -2.4 and observation[0] < 2.4 and episode_step_count < 5000:
-        episode_step_count += 1
-        all_steps += 1
-
-        a, _ = rl_max_Q_s(observation)
-        if DISTURB_PROB > 0.0:            
-            if dist_ongoing == 0 and np.random.rand() > (1.0 - DISTURB_PROB):
-                dist_ongoing = DISTURB_DURATION
-            if dist_ongoing > 0:
-                print("\tstep #%d:\tdisturbance ongoing: %d" % (episode_step_count, dist_ongoing))
-                dist_ongoing -= 1
-                a = env_random_action()
-
-        observation, _, done = env_step(a)
+    all_steps = 0
+    for episode in range(test_duration):
+        observation, _ = env_reset()
         env_render()
-    
-    print("%d\t\t%d\t\t" % (episode, episode_step_count))
+        episode_step_count = 0
+        dist_ongoing = 0
 
-print("Avg. Steps: %0.2f" % (all_steps / TEST_EPISODES))
-env.close()
+        while not env_is_done(observation) and episode_step_count < TEST_MAX_STEPS:
+            episode_step_count += 1
+            all_steps += 1
+
+            a, _ = rl_max_Q_s(observation)      # evaluate Value Function and find next action
+            observation, _, _ = env_step(a)     # perform next action and observe result
+            env_render()                        # (software mode) display visualization
+
+        print("%d\t\t%d" % (episode, episode_step_count))
+    print("\nAvg. Steps: %0.2f\n" % (all_steps / test_duration))
+
+# ----------------------------------------------------------------------------
+# Command line handling
+# ----------------------------------------------------------------------------
+
+MAIN_MODE_STD   = 0     # standard mode: calibrate, learn, test
+MAIN_MODE_SAVE  = 1     # like standard mode, but save calibration and learned state
+MAIN_MODE_LOAD  = 2     # execute only: load calibration and learned state and run/test it
+
+def parse_args():
+    argc = len(sys.argv)
+
+    # Standard Mode
+    if argc == 1:
+        return MAIN_MODE_STD, None, None
+    
+    elif argc in [3, 4]:
+        cmd = sys.argv[1].upper()
+
+        # Save / Persistence mode
+        if cmd == "-S":
+            filename = sys.argv[2]
+            if filename:
+                print("HINT: Persistence mode active. Save to:", filename + ".scaler, " + 
+                                                                filename + ".rbfs and " +
+                                                                filename + ".rbfnet")
+            return MAIN_MODE_SAVE, filename, None
+
+        # Load / Execution mode
+        elif cmd == "-L":
+            filename = sys.argv[2]
+            duration = None
+            if argc == 4:
+                try:    
+                    duration = int(sys.argv[3])
+                except:
+                    pass
+            print("HINT: Execution mode active. Loading:", filename + ".scaler, " + 
+                                                           filename + ".rbfs and " +
+                                                           filename + ".rbfnet")
+            if duration is None:
+                duration = TEST_EPISODES
+            return MAIN_MODE_LOAD, filename, duration
+
+    # Invalid arguments
+    print("ERROR #3: Invalid command line options.")
+    sys.exit(3)
+
+# ----------------------------------------------------------------------------
+# MAIN
+# ----------------------------------------------------------------------------
+
+mode, filename, duration = parse_args()
+
+env_prepare()
+
+if mode != MAIN_MODE_LOAD:
+    main_calibrate()
+    main_learn(filename)
+    main_test(TEST_EPISODES)
+else:
+    rl_load(filename)
+    main_test(duration)
+
+env_close()

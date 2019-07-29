@@ -1,5 +1,8 @@
-.ipynb_checkpoints
 __pycache__
+.ipynb_checkpoints
+.vscode
 *.png
 *.pyc
-.vscode
+*.scaler
+*.rbfs
+*.rbfnet
