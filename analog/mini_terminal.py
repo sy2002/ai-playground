@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Mini Terminal for connecting to Bernd's HC
+# Mini Terminal for connecting to Model-1 by Analog Paradigm
 #
 # Setup:
 #   1. Install dependencies: pip install -r mini_terminal.txt

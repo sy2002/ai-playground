@@ -1,36 +1,77 @@
-
-# Basic idea of this "RBF Network" solution:
+# ANALOG-CARTPOLE - A hybrid analog/digital computing experiment
 #
-# * CartPole is offering 4 features: Cart Position, Cart Velocity, Pole Angle and Pole Velocity At Tip.
-# * When we use a collection of (aka "network") of Radial Basis Functions (RBFs), then we can transform
-#   these 4 features into n distances from the centers of the RBFs, where n = RBF_EXEMPLARS x RBF_GAMMA_COUNT
-# * The "Gamma" parameter controls the "width" of the RBF's bell curve. The idea is, to use multiple RBFSamplers
-#   with multiple widths to construct a network with a good variety to sample from.
-# * The RBF transforms the initial 4 features into plenty of features and therefore offers a lot of "variables"
-#   or something like "resolution", where a Linear Regression algorithm can calcluate the weights for.
-#   In contrast, the original four features of the observation space would yield a too "low resolution".
-# * The Reinforcement Learning algorithm used to learn to balance the pole is Q-Learning.
-# * The "State" "s" of the Cart is obtained by using the above-mentioned RBF Network to transform the four
-#   original features into the n distances from a randomly chosen amount of RBF centers (aka "Exemplars").
-#   Note that it is absolutely OK, that the Exemplars are chosen randomly, because each Exemplar defines one
-#   possible combination of (Cart Position, Cart Velocity, Pole Angle and Pole Velocity At Tip); and therefore
-#   having lots of those random Exemplars just gives us the granularity ("resolution") we need for our Linear Regression.
-# * The possible "Actions" "a" of the system are "push from left" or "push from right", aka 0 and 1.
-# * For each possible action we are calculating one Value Function using Linear Regression. It can be illustrated by
-#   asking the question: "For the state we are currently in, defined by the distances to the Exemplars, what is the
-#   Value Function for pushing from left or puhsing from right. The larger one wins."
-
-# On RBFSampler:
+# Use digital Reinforcement Learning to learn to balance an inverse pendulum
+# on a cart simulated by a Model-1 by Analog Paradigm (http://analogparadigm.com)
 #
-# Despite its name, the RBFSampler is actually not using any RBFs inside. I did some experiments about
-# this fact. Go to https://github.com/sy2002/ai-playground/blob/master/RBFSampler-Experiment.ipynb 
-# to learn more.
+# Analog part done by vaxman on 2019-07-27
+# Digital part done by sy2002 on 2019-07-27
+
+# if you don't have a Model-1 at hand, set SOFTWARE_ONLY to True
+# to use a software based physics simulation by OpenAI Gym
+SOFTWARE_ONLY     = False
+
+print("\nAnalog Cartpole - A hybrid analog/digital computing experiment")
+print("==============================================================\n")
+
+import numpy as np
+import serial
+import sys
+
+from readchar import readchar
+from time import sleep
+
+from sklearn.kernel_approximation import RBFSampler
+from sklearn.linear_model import SGDRegressor
+from sklearn.pipeline import FeatureUnion
+from sklearn.preprocessing import StandardScaler
+
+if (SOFTWARE_ONLY):
+    import gym
+    import gym.spaces
+    print("WARNING: Software-only mode. No analog computer is being used.\n")
+
+# ----------------------------------------------------------------------------
+# Analog Setup
+# ----------------------------------------------------------------------------
+
+# Hybrid Controller serial setup
+HC_PORT             = '/dev/cu.usbserial-DN050L1O'
+HC_BAUD             = 115200        
+HC_BYTE             = 8
+HC_PARITY           = serial.PARITY_NONE
+HC_STOP             = serial.STOPBITS_ONE
+HC_RTSCTS           = False
+HC_TIMEOUT          = 0.02          # increase to e.g. 0.05, if you get error #2
+
+IMPULSE_DURATION    = 10            # analog impulse duration in milliseconds
+
+HC_SIM_X_POS        = "0261"        # address of cart's x-position
+HC_SIM_X_VEL        = "0260"        # address of cart's x-velocity
+HC_SIM_ANGLE        = "0263"        # address of pole's/pendulum's angle
+HC_SIM_ANGLE_VEL    = "0160"        # address of pole's/pendulum's angular velocity
+
+HC_SIM_DIRECTION_1  = "D0"          # digital out #0=hi: direction = 1, e.g. right
+HC_SIM_DIRECTION_0  = "d0"          # digital out #0=lo: direction = 0, e.g. left
+HC_SIM_IMPULSE_1    = "D1"          # digital out #1=hi: apply force
+HC_SIM_IMPULSE_0    = "d1"          # digital out #1=lo: stop applying force
+
+HC_CMD_RESET        = "x"           # reset hybrid controller, try multiple times until response received
+HC_CMD_INIT         = "i"           # initial condition (i.e. pendulum is upright)
+HC_CMD_OP           = "o"           # start to operate
+HC_CMD_HALT         = "h"           # halt/pause (can be resumed by HC_CMD_OP)
+HC_CMD_GETVAL       = "g"           # set address of computing element and return value and ID
+
+HC_RSP_RESET        = "RESET"       # HC response on HC_CMD_RESET
+
+# ----------------------------------------------------------------------------
+# RL Meta Parameters
+# ----------------------------------------------------------------------------
 
 RBF_EXEMPLARS       = 250           # amount of exemplars per "gamma instance" of the RBF network
 RBF_GAMMA_COUNT     = 10            # amount of "gamma instances", i.e. RBF_EXEMPLARS x RBF_GAMMA_COUNT features
 RBF_GAMMA_MIN       = 0.05          # minimum gamma, linear interpolation between min and max
 RBF_GAMMA_MAX       = 4.0           # maximum gamma
-RBF_SAMPLING        = 30000         # amount of samples to take for sampling the observation space for fitting the Scaler
+RBF_SAMPLING        = 100           # amount of episodes to learn for initializing the scaler
 
 LEARN_EPISODES      = 1000          # number of episodes to learn
 TEST_EPISODES       = 10            # number of episodes that we use the visual rendering to test what we learned
@@ -41,139 +82,128 @@ EPSILON             = 0.5           # randomness for epsilon-greedy algorithm (e
 EPSILON_DECAY_t     = 0.1
 EPSILON_DECAY_m     = 6             # every episode % EPSILON_DECAY_m == 0, we increase EPSILON_DECAY_t
 
-IMPULSE_DURATION    = 10            # impulse duration in milliseconds
-
 PROBE               = 20            # after how many episodes we will print the status
 
-from readchar import readchar
-import serial
-import threading
-from time import sleep
-import sys
+# ----------------------------------------------------------------------------
+# Serial protocol functions for Model-1 Hybrid Controller
+# ----------------------------------------------------------------------------
 
-import numpy as np
-
-from sklearn.kernel_approximation import RBFSampler
-from sklearn.linear_model import SGDRegressor
-from sklearn.pipeline import FeatureUnion
-from sklearn.preprocessing import StandardScaler
-
-HC_PORT = '/dev/cu.usbserial-DN050L1O'
-
-HC_SIM_X_POS        = "0261"
-HC_SIM_X_VEL        = "0260"
-HC_SIM_ANGLE        = "0263"
-HC_SIM_ANGLE_VEL    = "0160"
-
-HC_SIM_DIRECTION_1  = "D0"
-HC_SIM_DIRECTION_0  = "d0"
-HC_SIM_IMPULSE_1    = "D1"
-HC_SIM_IMPULSE_0    = "d1"
-
-
-try:
-    ser = serial.Serial(    port=HC_PORT,
-                            baudrate=115200,
-                            bytesize=8, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE,
-                            rtscts=False,
-                            timeout=0.02)
-except:
-    print("ERROR: SERIAL PORT CANNOT BE OPENED.")
-    sys.exit(1)
+if not SOFTWARE_ONLY:
+    try:
+        ser = serial.Serial(    port=HC_PORT,
+                                baudrate=HC_BAUD,
+                                bytesize=HC_BYTE, parity=HC_PARITY, stopbits=HC_STOP,
+                                rtscts=HC_RTSCTS,
+                                timeout=HC_TIMEOUT)
+    except:
+        print("ERROR #1: SERIAL PORT CANNOT BE OPENED.")
+        sys.exit(1)
 
 def hc_send(cmd):
     ser.write(cmd.encode("ASCII"))
 
 def hc_receive():
-    line = ser.readline().decode("ASCII")
-    line = line.split("\n")[0]
-    return line
-#    return ser.readline().decode("ASCII").split("\n")[0]
+    # HC ends each communication with "\n", so we can conveniently use readline
+    return ser.readline().decode("ASCII").split("\n")[0]
 
+# when using HC_CMD_GETVAL, HC returns "<value><space><id/type>\n"
+# we ignore <type> but we expect a well formed response
 def res2float(str):
     f = 0
     try:
         f = float(str.split(" ")[0])
+        return f
     except:
-        print("ERROR IN FLOAT CONVERSION:", str)
-        exit(1)
-    return f
+        print("ERROR #2: FLOAT CONVERSION:", str)
+        sys.exit(2)
 
-def hc_get_value(addr):
-    hc_send("g")
-    hc_send(addr)
-    return str2float(hc_receive().split(" ")[0])
+# ask for a value and give the system 1ms to return it
+def hc_ask_for_value(addr):
+    hc_send(HC_CMD_GETVAL + addr)
+    sleep(0.001)
 
+# Ask for the 4 relevant values that the simulation state consists of
+# and let the serial buffer be filled with the results. Then read four
+# "lines" from the serial buffer that are containing the results and
+# convert them to floats.
+# We are doing it this way (instead of fetching each value one at a time),
+# because for some reason pySerial seems to be slow while reading
 def hc_get_sim_state():
-    hc_send("g")
-    hc_send(HC_SIM_X_POS)
-    sleep(0.001)
-    hc_send("g")
-    hc_send(HC_SIM_X_VEL)    
-    sleep(0.001)
-    hc_send("g")    
-    hc_send(HC_SIM_ANGLE)
-    sleep(0.001)
-    hc_send("g")    
-    hc_send(HC_SIM_ANGLE_VEL)
-    sleep(0.001)
+    hc_ask_for_value(HC_SIM_X_POS)
+    hc_ask_for_value(HC_SIM_X_VEL)    
+    hc_ask_for_value(HC_SIM_ANGLE)
+    hc_ask_for_value(HC_SIM_ANGLE_VEL)
     return (    res2float(hc_receive()),
                 res2float(hc_receive()),
                 res2float(hc_receive()),
                 res2float(hc_receive()))
 
+# bring the simulation back to the initial condition (pendulum is upright)
 def hc_reset_sim():
-    hc_send("i")
-    sleep(0.05)
-    hc_send("o")
-    sleep(0.05)        
+    hc_send(HC_CMD_INIT)
+    sleep(0.05)         #time for condensators to recharge
+    hc_send(HC_CMD_OP)
+    sleep(0.05)         #time for the feedback string to arrive
+
+    #TODO: instead of just flushing the serial input buffer:
+    #read and expect the correct feedback from HC
     ser.flushInput()
 
+# influence simulation by using an impulse to push the cart to the left or to
+# the right; it does not matter if "1" means left or right as long as "0" means
+# the opposite of "1"
 def hc_influence_sim(a):
     if (a == 1):
         hc_send(HC_SIM_DIRECTION_1)
     else:
         hc_send(HC_SIM_DIRECTION_0)
-
-    duration = IMPULSE_DURATION / 1000.0
-
+   
     hc_send(HC_SIM_IMPULSE_1)
-    sleep(duration)
+    sleep(IMPULSE_DURATION / 1000.0)
     hc_send(HC_SIM_IMPULSE_0)
 
-# Reset HC
-received = ""
-while (received != "RESET"):
-    print("Reset attempt")
-    hc_send("x")
-    sleep(1)
-    received = hc_receive()
-    if received != "":
-        print("Received:", received)
+# ----------------------------------------------------------------------------
+# Prepare environment / simulation
+# ----------------------------------------------------------------------------
 
-"""
-i = 0
-while True:
-    if i == 0:
-        hc_reset_sim()
-    print(hc_get_sim_state())
-    hc_send("h")
-    readchar()
-    hc_send("o")
-    sleep(0.03)
-    ser.flushInput()
-    i = 1
-    #i += 1 % 1000
-"""
-
-
-print("\nCartPole-v1 solver by sy2002 on 20th of July 2019")
-print("=================================================\n")
-print("Sampling observation space by playing", RBF_SAMPLING, "random episodes...")
-
-
-# create environment
+# list of possible actions that the RL agent can perform in the environment
 env_actions = [0, 1] # needs to be in ascending order with no gaps, e.g. [0, 1]
+
+# prepare OpenAI simulation
+if SOFTWARE_ONLY:
+    env = gym.make('CartPole-v1')
+
+# prepare analog simulation by resetting the HC
+else:
+    received = ""
+    while (received != HC_RSP_RESET):
+        print("Hybrid Controller reset attempt...")
+        hc_send(HC_CMD_RESET)
+        sleep(1)
+        received = hc_receive()
+        if received != "":
+            print("  received:", received)
+
+    # Trivial "single step debugger" to find out (by looking at the oscilloscope)
+    # the right limits for the x position and the pendulum's angle.
+    # Comment it in, if you'd like to experiment
+    """
+    while True:
+        if i == 0:
+            hc_reset_sim()
+        print(hc_get_sim_state())
+        hc_send(HC_CMD_HALT)
+        readchar()
+        hc_send(HC_CMD_OP)
+        sleep(0.03)
+        ser.flushInput()
+    """
+
+# ----------------------------------------------------------------------------
+# TODO Continue code cleanup and refactoring to have one switchable
+# code base between the analog simulator and OpenAI gym right after here;
+# also add some sampling for calibrating the scaler
+# ----------------------------------------------------------------------------
 
 # create scaler and fit it to the sampled observation space
 #scaler = StandardScaler()
@@ -305,6 +335,7 @@ for episode in range(LEARN_EPISODES + 1):
 
         # else change the rewards in the terminal position to have a clearer bias for "longevity"
         else:
+            """
             if episode_step_count < 20:
                 r = -100
             elif episode_step_count < 50:
@@ -323,6 +354,7 @@ for episode in range(LEARN_EPISODES + 1):
                 r = 300
             else:
                 r = 1000
+            """
             a2 = a
             max_q_s2a2 = 0 # G (future rewards) of terminal position is 0 although the reward r is high
 
@@ -348,6 +380,9 @@ for episode in range(LEARN_EPISODES + 1):
         #print("Max:", episode_sim_max)
         #print("Min:", episode_sim_min)
 
+
+if not SOFTWARE_ONLY:
+    sys.exit(0)
 
 # now, after we learned how to balance the pole: test it and use the visual output of Gym
 print("\nTest:")
