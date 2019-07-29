@@ -3,7 +3,7 @@
 Use digital Reinforcement Learning to learn to balance an inverse pendulum
 on a cart simulated by a Model-1 by Analog Paradigm (http://analogparadigm.com)
 
-Analog part done by vaxman on 2019-07-27
+Analog part done by vaxman on 2019-07-27  
 Digital part done by sy2002 on 2019-07-27
 
 TODO: Write a better README.md
