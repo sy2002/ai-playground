@@ -77,17 +77,17 @@ RBF_GAMMA_MAX       = 4.0           # maximum gamma
 RBF_SAMPLING        = 100           # amount of episodes to learn for initializing the scaler
 
 CLBR_RND_EPISODES   = 500           # during calibration: number of random episodes
-CLBR_LEARN_EPISODES = 120           # during calibration: number of learning episodes
-LEARN_EPISODES      = 600           # real learning: # of episodes to learn
+CLBR_LEARN_EPISODES = 200           # during calibration: number of learning episodes
+LEARN_EPISODES      = 2000          # real learning: # of episodes to learn
 TEST_EPISODES       = 10            # software only: # of episodes  we use the visual rendering to test what we learned
 TEST_MAX_STEPS      = 5000          # maximum amount of steps during test/execution phase
 
 GAMMA               = 0.999         # discount factor for Q-Learning
-ALPHA               = 0.75          # initial learning rate
-ALPHA_DECAY         = 0.10          # learning rate decay
+ALPHA               = 0.3           # initial learning rate
+ALPHA_DECAY         = 0.2           # learning rate decay
 EPSILON             = 0.5           # randomness for epsilon-greedy algorithm (explore vs exploit)
 EPSILON_DECAY_t     = 0.1
-EPSILON_DECAY_m     = 6             # every episode % EPSILON_DECAY_m == 0, we increase EPSILON_DECAY_t
+EPSILON_DECAY_m     = 18            # every episode % EPSILON_DECAY_m == 0, we increase EPSILON_DECAY_t
 
 PROBE               = 20            # after how many episodes we will print the status
 
