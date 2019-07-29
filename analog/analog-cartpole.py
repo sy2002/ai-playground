@@ -8,7 +8,7 @@
 
 # if you don't have a Model-1 at hand, set SOFTWARE_ONLY to True
 # to use a software based physics simulation by OpenAI Gym
-SOFTWARE_ONLY     = False
+SOFTWARE_ONLY     = True
 
 print("\nAnalog Cartpole - A hybrid analog/digital computing experiment")
 print("==============================================================\n")
@@ -43,7 +43,7 @@ HC_STOP             = serial.STOPBITS_ONE
 HC_RTSCTS           = False
 HC_TIMEOUT          = 0.02          # increase to e.g. 0.05, if you get error #2
 
-IMPULSE_DURATION    = 10            # analog impulse duration in milliseconds
+HC_IMPULSE_DURATION = 10            # analog impulse duration in milliseconds
 
 HC_SIM_X_POS        = "0261"        # address of cart's x-position
 HC_SIM_X_VEL        = "0260"        # address of cart's x-velocity
@@ -90,7 +90,7 @@ PROBE               = 20            # after how many episodes we will print the 
 
 if not SOFTWARE_ONLY:
     try:
-        ser = serial.Serial(    port=HC_PORT,
+        hc_ser = serial.Serial( port=HC_PORT,
                                 baudrate=HC_BAUD,
                                 bytesize=HC_BYTE, parity=HC_PARITY, stopbits=HC_STOP,
                                 rtscts=HC_RTSCTS,
@@ -100,15 +100,15 @@ if not SOFTWARE_ONLY:
         sys.exit(1)
 
 def hc_send(cmd):
-    ser.write(cmd.encode("ASCII"))
+    hc_ser.write(cmd.encode("ASCII"))
 
 def hc_receive():
     # HC ends each communication with "\n", so we can conveniently use readline
-    return ser.readline().decode("ASCII").split("\n")[0]
+    return hc_ser.readline().decode("ASCII").split("\n")[0]
 
 # when using HC_CMD_GETVAL, HC returns "<value><space><id/type>\n"
 # we ignore <type> but we expect a well formed response
-def res2float(str):
+def hc_res2float(str):
     f = 0
     try:
         f = float(str.split(" ")[0])
@@ -133,10 +133,10 @@ def hc_get_sim_state():
     hc_ask_for_value(HC_SIM_X_VEL)    
     hc_ask_for_value(HC_SIM_ANGLE)
     hc_ask_for_value(HC_SIM_ANGLE_VEL)
-    return (    res2float(hc_receive()),
-                res2float(hc_receive()),
-                res2float(hc_receive()),
-                res2float(hc_receive()))
+    return (    hc_res2float(hc_receive()),
+                hc_res2float(hc_receive()),
+                hc_res2float(hc_receive()),
+                hc_res2float(hc_receive()))
 
 # bring the simulation back to the initial condition (pendulum is upright)
 def hc_reset_sim():
@@ -147,7 +147,7 @@ def hc_reset_sim():
 
     #TODO: instead of just flushing the serial input buffer:
     #read and expect the correct feedback from HC
-    ser.flushInput()
+    hc_ser.flushInput()
 
 # influence simulation by using an impulse to push the cart to the left or to
 # the right; it does not matter if "1" means left or right as long as "0" means
@@ -159,7 +159,7 @@ def hc_influence_sim(a):
         hc_send(HC_SIM_DIRECTION_0)
    
     hc_send(HC_SIM_IMPULSE_1)
-    sleep(IMPULSE_DURATION / 1000.0)
+    sleep(HC_IMPULSE_DURATION / 1000.0)
     hc_send(HC_SIM_IMPULSE_0)
 
 # ----------------------------------------------------------------------------
@@ -196,7 +196,7 @@ else:
         readchar()
         hc_send(HC_CMD_OP)
         sleep(0.03)
-        ser.flushInput()
+        hc_ser.flushInput()
     """
 
 # ----------------------------------------------------------------------------
@@ -289,10 +289,13 @@ for episode in range(LEARN_EPISODES + 1):
         t += EPSILON_DECAY_t
 
     # each episode starts again at the begining
-    hc_reset_sim()
-    s = hc_get_sim_state()
-    a = np.random.choice(env_actions)
-
+    a = np.random.choice(env_actions)    
+    if SOFTWARE_ONLY:
+        s = env.reset()
+    else:
+        hc_reset_sim()
+        s = hc_get_sim_state()
+    
     if episode_step_max < episode_step_count:
         episode_step_max = episode_step_count
 
@@ -310,19 +313,20 @@ for episode in range(LEARN_EPISODES + 1):
             a = np.random.choice(env_actions)
 
         # exploit or explore and collect reward
-
-        hc_influence_sim(a)
-        observation = hc_get_sim_state()
-        r = 1
+        if SOFTWARE_ONLY:
+            observation, r, done, _ = env.step(a)
+        else:
+            hc_influence_sim(a)
+            observation = hc_get_sim_state()
+            r = 1 # reward each "timestep" with a 1 to reward longevity
+            # episode done, if x-position [0] or angle [1] invalid
+            done = abs(observation[0]) > 0.9 or abs(observation[2]) > 1.0  
 
         for i in range(4):
             if episode_sim_max[i] < observation[i]:
                 episode_sim_max[i] = observation[i]
             if episode_sim_min[i] > observation[i]:
                 episode_sim_min[i] = observation[i]
-
-        # x-position [0] or angle [1] invalid
-        done = abs(observation[0]) > 0.9 or abs(observation[2]) > 1.0  
 
         s2 = observation
 
@@ -335,26 +339,6 @@ for episode in range(LEARN_EPISODES + 1):
 
         # else change the rewards in the terminal position to have a clearer bias for "longevity"
         else:
-            """
-            if episode_step_count < 20:
-                r = -100
-            elif episode_step_count < 50:
-                r = -50
-            elif episode_step_count < 70:
-                r = -20
-            elif episode_step_count < 100:
-                r = -10
-            elif episode_step_count < 120:
-                r = 10
-            elif episode_step_count < 150:
-                r = 100
-            elif episode_step_count < 200:
-                r = 200
-            elif episode_step_count <= 500:
-                r = 300
-            else:
-                r = 1000
-            """
             a2 = a
             max_q_s2a2 = 0 # G (future rewards) of terminal position is 0 although the reward r is high
 
