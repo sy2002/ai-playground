@@ -1,6 +1,6 @@
 # ANALOG-CARTPOLE - A hybrid analog/digital computing experiment
 #
-# Use digital Reinforcement Learning to learn to balance an inverse pendulum
+# Use digital Reinforcement Learning (RL) to learn to balance an inverse pendulum
 # on a cart simulated by a Model-1 by Analog Paradigm (http://analogparadigm.com)
 #
 # Analog part done by vaxman on 2019-07-27
@@ -73,8 +73,10 @@ RBF_GAMMA_MIN       = 0.05          # minimum gamma, linear interpolation betwee
 RBF_GAMMA_MAX       = 4.0           # maximum gamma
 RBF_SAMPLING        = 100           # amount of episodes to learn for initializing the scaler
 
-LEARN_EPISODES      = 1000          # number of episodes to learn
-TEST_EPISODES       = 10            # number of episodes that we use the visual rendering to test what we learned
+CLBR_RND_EPISODES   = 500           # during calibration: number of random episodes
+CLBR_LEARN_EPISODES = 120           # during calibration: number of learning episodes
+LEARN_EPISODES      = 220           # real learning: # of episodes to learn
+TEST_EPISODES       = 10            # software only: # of episodes  we use the visual rendering to test what we learned
 GAMMA               = 0.999         # discount factor for Q-Learning
 ALPHA               = 0.75          # initial learning rate
 ALPHA_DECAY         = 0.10          # learning rate decay
@@ -163,210 +165,253 @@ def hc_influence_sim(a):
     hc_send(HC_SIM_IMPULSE_0)
 
 # ----------------------------------------------------------------------------
-# Prepare environment / simulation
+# Environment abstraction
 # ----------------------------------------------------------------------------
+
+env = None
 
 # list of possible actions that the RL agent can perform in the environment
+# for the algorithm, it doesn't matter if 0 means right and 1 left or vice versa or if
+# there are more than two possible actions
 env_actions = [0, 1] # needs to be in ascending order with no gaps, e.g. [0, 1]
 
-# prepare OpenAI simulation
-if SOFTWARE_ONLY:
-    env = gym.make('CartPole-v1')
+def env_random_action():
+    return np.random.choice(env_actions)
 
-# prepare analog simulation by resetting the HC
-else:
-    received = ""
-    while (received != HC_RSP_RESET):
-        print("Hybrid Controller reset attempt...")
-        hc_send(HC_CMD_RESET)
-        sleep(1)
-        received = hc_receive()
-        if received != "":
-            print("  received:", received)
+def env_prepare():
+    global env
 
-    # Trivial "single step debugger" to find out (by looking at the oscilloscope)
-    # the right limits for the x position and the pendulum's angle.
-    # Comment it in, if you'd like to experiment
-    """
-    while True:
-        if i == 0:
-            hc_reset_sim()
-        print(hc_get_sim_state())
-        hc_send(HC_CMD_HALT)
-        readchar()
-        hc_send(HC_CMD_OP)
-        sleep(0.03)
-        hc_ser.flushInput()
-    """
+    # prepare OpenAI simulation
+    if SOFTWARE_ONLY:
+        env = gym.make('CartPole-v1')
 
-# ----------------------------------------------------------------------------
-# TODO Continue code cleanup and refactoring to have one switchable
-# code base between the analog simulator and OpenAI gym right after here;
-# also add some sampling for calibrating the scaler
-# ----------------------------------------------------------------------------
+    # prepare analog simulation by resetting the HC
+    else:
+        received = ""
+        while (received != HC_RSP_RESET):
+            print("Hybrid Controller reset attempt...")
+            hc_send(HC_CMD_RESET)
+            sleep(1)
+            received = hc_receive()
+            if received != "":
+                print("  received:", received)
 
-# create scaler and fit it to the sampled observation space
-#scaler = StandardScaler()
-#scaler.fit(observation_samples)
-
-# the RBF network is built like this: create as many RBFSamplers as RBF_GAMMA_COUNT
-# and do so by setting the "width" parameter GAMMA of the RBFs as a linear interpolation
-# between RBF_GAMMA_MIN and RBF_GAMMA_MAX
-gammas = np.linspace(RBF_GAMMA_MIN, RBF_GAMMA_MAX, RBF_GAMMA_COUNT)
-models = [RBFSampler(n_components=RBF_EXEMPLARS, gamma=g) for g in gammas]
-
-# we will put all these RBFSamplers into a FeatureUnion, so that our Linear Regression
-# can regard them as one single feature space spanning over all "Gammas"
-transformer_list = []
-for model in models:
-    model.fit([[1.0, 1.0, 1.0, 1.0]]) # RBFSampler just needs the dimensionality, not the data itself
-    transformer_list.append((str(model), model))
-rbfs = FeatureUnion(transformer_list)     #union of all RBF exemplar's output
-
-# we use one Linear Regression per possible action to model the Value Function for this action,
-# so rbf_net is a list; SGDRegressor allows step-by-step regression using partial_fit, which
-# is exactly what we need to learn
-rbf_net = [SGDRegressor(eta0=ALPHA, power_t=ALPHA_DECAY, learning_rate='invscaling', max_iter=5, tol=float("-inf"))
-           for i in range(len(env_actions))]
-
-# transform the 4 features (Cart Position, Cart Velocity, Pole Angle and Pole Velocity At Tip)
-# into RBF_EXEMPLARS x RBF_GAMMA_COUNT distances from the RBF centers ("Exemplars")
-def transform_s(s):
-    return rbfs.transform(np.array(s).reshape(1, -1))
-
-# SGDRegressor expects a vector, so we need to transform our action, which is 0 or 1 into a vector
-def transform_val(val):
-    return np.array([val]).ravel()
-
-# SGDRegressor needs "partial_fit" to be called before the first "predict" is called
-# so let's do that for all actions (aka entries in the rbf_net list) with random (dummy) values
-# for the state and the Value Function
-for net in rbf_net:
-    random_val_func = np.random.rand() * np.random.randint(1, 100) # random float 0 < x < 100
-    net.partial_fit(transform_s([0.5, 0.1, -0.5, 0.1]), transform_val(random_val_func))
-
-# get the result of the Value Function for action a taken in state s
-def get_Q_s_a(s, a):
-    return rbf_net[a].predict(transform_s(s))
-
-# learn Value Function for action a in state s
-def set_Q_s_a(s, a, val):
-    rbf_net[a].partial_fit(transform_s(s), transform_val(val))
-
-# find the best action to take in state s
-def max_Q_s(s):
-    max_val = float("-inf")
-    max_idx = -1
-    for a in env_actions:
-        val = get_Q_s_a(s, a)
-        if val > max_val:
-            max_val = val
-            max_idx = a
-    return max_idx, max_val
-
-t                   = 1.0           # used to decay epsilon
-won_last_interval   = 0             # for statistical purposes
-steps_last_interval = 0             # dito
-
-print("\nLearn:")
-print("======\n")
-print("Episode\t\t\tAvg. Steps\t\tMax Steps\t\tepsilon")
-
-episode_sim_max = [-1000, -1000, -1000, -1000]
-episode_sim_min = [1000, 1000, 1000, 1000]
-
-"""
-Max: [0.9283, 1.2565, 1.2565, 1.1949]
-Min: [-0.9449, -1.2537, -1.2537, -0.9689]
-"""
-
-episode_step_max = 0
-episode_step_count = 0
-
-for episode in range(LEARN_EPISODES + 1):
-    # let epsilon decay over time
-    if episode % EPSILON_DECAY_m == 0:
-        t += EPSILON_DECAY_t
-
-    # each episode starts again at the begining
-    a = np.random.choice(env_actions)    
+# reset environment: each episode starts again at the initial condition
+# independent of using software or the analog computer, we have these core variables
+# that are describing the state of the RL's environment and possible actions:
+#    s = (cart position, cart velocity, pole angle, pole angle velocity)
+#    a = <possible actions> = (0 or 1), apply an impulse to the car to the left/right
+def env_reset():
     if SOFTWARE_ONLY:
         s = env.reset()
     else:
         hc_reset_sim()
         s = hc_get_sim_state()
-    
-    if episode_step_max < episode_step_count:
-        episode_step_max = episode_step_count
+    return s, env_random_action()
 
+#perform action and return observation, reward and "done" flag
+def env_step(action_to_be_done):
+    if SOFTWARE_ONLY:
+        observation, r, done, _ = env.step(action_to_be_done)
+    else:
+        hc_influence_sim(action_to_be_done)
+        observation = hc_get_sim_state()
+        r = 1 # reward each "timestep" with a 1 to reward longevity
+        # episode done, if x-position [0] or angle [1] invalid
+        done = abs(observation[0]) > 0.9 or abs(observation[2]) > 1.0  
+    return observation, r, done
+
+# ----------------------------------------------------------------------------
+# Reinforcement Learning Core
+# ----------------------------------------------------------------------------
+
+scaler      = None
+gammas      = None
+models      = None
+rbfs        = None
+rbf_net     = None
+
+# transform the 4 features (Cart Position, Cart Velocity, Pole Angle and Pole Velocity At Tip)
+# into RBF_EXEMPLARS x RBF_GAMMA_COUNT distances from the RBF centers ("Exemplars")
+def rl_transform_s(s):
+    if scaler == None:
+        return rbfs.transform(np.array(s).reshape(1, -1))
+    else:
+        return rbfs.transform(scaler.transform(np.array(s).reshape(1, -1)))
+
+# SGDRegressor expects a vector, so we need to transform our action, which is 0 or 1 into a vector
+def rl_transform_val(val):
+    return np.array([val]).ravel()
+
+def rl_init():
+    global scaler, gammas, models, rbfs, rbf_net
+
+    # the RBF network is built like this: create as many RBFSamplers as RBF_GAMMA_COUNT
+    # and do so by setting the "width" parameter GAMMA of the RBFs as a linear interpolation
+    # between RBF_GAMMA_MIN and RBF_GAMMA_MAX
+    gammas = np.linspace(RBF_GAMMA_MIN, RBF_GAMMA_MAX, RBF_GAMMA_COUNT)
+    models = [RBFSampler(n_components=RBF_EXEMPLARS, gamma=g) for g in gammas]
+
+    # we will put all these RBFSamplers into a FeatureUnion, so that our Linear Regression
+    # can regard them as one single feature space spanning over all "Gammas"
+    transformer_list = []
+    for model in models:
+        model.fit([[1.0, 1.0, 1.0, 1.0]]) # RBFSampler just needs the dimensionality, not the data itself
+        transformer_list.append((str(model), model))
+    rbfs = FeatureUnion(transformer_list)     #union of all RBF exemplar's output
+
+    # we use one Linear Regression per possible action to model the Value Function for this action,
+    # so rbf_net is a list; SGDRegressor allows step-by-step regression using partial_fit, which
+    # is exactly what we need to learn
+    rbf_net = [SGDRegressor(eta0=ALPHA, power_t=ALPHA_DECAY, learning_rate='invscaling', max_iter=5, tol=float("-inf"))
+            for i in range(len(env_actions))]
+
+    # SGDRegressor needs "partial_fit" to be called before the first "predict" is called
+    # so let's do that for all actions (aka entries in the rbf_net list) with random (dummy) values
+    # for the state and the Value Function
+    for net in rbf_net:
+        random_val_func = np.random.rand() * np.random.randint(1, 100) # random float 0 < x < 100
+        net.partial_fit(rl_transform_s([0.5, 0.1, -0.5, 0.1]), rl_transform_val(random_val_func))
+
+# get the result of the Value Function for action a taken in state s
+def rl_get_Q_s_a(s, a):
+    return rbf_net[a].predict(rl_transform_s(s))
+
+# learn Value Function for action a in state s
+def rl_set_Q_s_a(s, a, val):
+    rbf_net[a].partial_fit(rl_transform_s(s), rl_transform_val(val))
+
+# find the best action to take in state s
+def rl_max_Q_s(s):
+    max_val = float("-inf")
+    max_idx = -1
+    for a in env_actions:
+        val = rl_get_Q_s_a(s, a)
+        if val > max_val:
+            max_val = val
+            max_idx = a
+    return max_idx, max_val
+
+def rl_learn(learning_duration):
+    t                   = 1.0           # used to decay epsilon
+    won_last_interval   = 0             # for statistical purposes
+    steps_last_interval = 0             # dito
+
+    episode_step_max = 0
     episode_step_count = 0
 
+    print("Episode\t\t\tAvg. Steps\t\tMax Steps\t\tepsilon")
+
+    for episode in range(learning_duration + 1):
+        # let epsilon decay over time
+        if episode % EPSILON_DECAY_m == 0:
+            t += EPSILON_DECAY_t
+
+        # each episode starts again at the begining
+        s, a = env_reset()
+        
+        if episode_step_max < episode_step_count:
+            episode_step_max = episode_step_count
+
+        episode_step_count = 0
+        done = False
+
+        while not done:
+            episode_step_count += 1
+            steps_last_interval += 1
+
+            # epsilon-greedy: do a random move with the decayed EPSILON probability
+            p = np.random.random()
+            eps = EPSILON / t
+            if p > (1 - eps):
+                a = np.random.choice(env_actions)
+
+            # exploit or explore and collect reward
+            observation, r, done = env_step(a)            
+            s2 = observation
+
+            # Q-Learning
+            old_qsa = rl_get_Q_s_a(s, a)
+            # if this is not the terminal position (which has no actions), then we can proceed as normal
+            if not done:
+                # "Q-greedily" grab the gain of the best step forward from here
+                a2, max_q_s2a2 = rl_max_Q_s(s2)
+
+            # else change the rewards in the terminal position to have a clearer bias for "longevity"
+            else:
+                a2 = a
+                max_q_s2a2 = 0 # G (future rewards) of terminal position is 0 although the reward r is high
+
+            # learn the new value for the Value Function
+            new_value = old_qsa + (r + GAMMA * max_q_s2a2 - old_qsa)
+            rl_set_Q_s_a(s, a, new_value)
+
+            # next state = current state, next action is the "Q-greedy" best action
+            s = s2
+            a = a2        
+
+        # every PROBEth episode: print status info
+        if episode % PROBE == 0:
+            if episode == 0:
+                probe_divisor = 1
+                episode_step_max = episode_step_count
+            else:
+                probe_divisor = PROBE
+            print("%d\t\t\t%0.2f\t\t\t%d\t\t\t%0.4f" % (episode, steps_last_interval / probe_divisor, episode_step_max, eps))
+            won_last_interval   = 0
+            steps_last_interval = 0
+            episode_step_max    = 0
+
+# ----------------------------------------------------------------------------
+# Calibration
+# ----------------------------------------------------------------------------
+
+print("Calibrating:")
+print("============\n")
+
+env_prepare()
+rl_init()
+
+clbr_res = []
+print("Performing %d random episodes..." % CLBR_RND_EPISODES, end="")
+episode_counts = []
+for i in range(CLBR_RND_EPISODES):
+    env_reset()
+    episode_count = 0
     done = False
     while not done:
-        episode_step_count += 1
-        steps_last_interval += 1
+        observation, r, done = env_step(env_random_action())
+        clbr_res.append(observation)
+        episode_count += 1
+    episode_counts.append(episode_count)
+print("\b\b\b: Done. %0.2f average steps per episode" % np.mean(episode_counts))
 
-        # epsilon-greedy: do a random move with the decayed EPSILON probability
-        p = np.random.random()
-        eps = EPSILON / t
-        if p > (1 - eps):
-            a = np.random.choice(env_actions)
+print("Performing %d uncalibrated learning episodes:\n" % CLBR_LEARN_EPISODES)
+rl_learn(CLBR_LEARN_EPISODES)
 
-        # exploit or explore and collect reward
-        if SOFTWARE_ONLY:
-            observation, r, done, _ = env.step(a)
-        else:
-            hc_influence_sim(a)
-            observation = hc_get_sim_state()
-            r = 1 # reward each "timestep" with a 1 to reward longevity
-            # episode done, if x-position [0] or angle [1] invalid
-            done = abs(observation[0]) > 0.9 or abs(observation[2]) > 1.0  
+scaler = StandardScaler() # create scaler and fit it to the sampled observation space
+scaler.fit(clbr_res)
+print("\nCalibration done. Samples taken: %d" % scaler.n_samples_seen_)
+print("    Mean:     ", scaler.mean_)
+print("    Variance: ", scaler.var_)
+print("    Scale:    ", scaler.scale_)
 
-        for i in range(4):
-            if episode_sim_max[i] < observation[i]:
-                episode_sim_max[i] = observation[i]
-            if episode_sim_min[i] > observation[i]:
-                episode_sim_min[i] = observation[i]
+# ----------------------------------------------------------------------------
+# Learning
+# ----------------------------------------------------------------------------
 
-        s2 = observation
-
-        # Q-Learning
-        old_qsa = get_Q_s_a(s, a)
-        # if this is not the terminal position (which has no actions), then we can proceed as normal
-        if not done:
-            # "Q-greedily" grab the gain of the best step forward from here
-            a2, max_q_s2a2 = max_Q_s(s2)
-
-        # else change the rewards in the terminal position to have a clearer bias for "longevity"
-        else:
-            a2 = a
-            max_q_s2a2 = 0 # G (future rewards) of terminal position is 0 although the reward r is high
-
-        # learn the new value for the Value Function
-        new_value = old_qsa + (r + GAMMA * max_q_s2a2 - old_qsa)
-        set_Q_s_a(s, a, new_value)
-
-        # next state = current state, next action is the "Q-greedy" best action
-        s = s2
-        a = a2        
-
-    # every PROBEth episode: print status info
-    if episode % PROBE == 0:
-        if episode == 0:
-            probe_divisor = 1
-            episode_step_max = episode_step_count
-        else:
-            probe_divisor = PROBE
-        print("%d\t\t\t%0.2f\t\t\t%d\t\t\t%0.4f" % (episode, steps_last_interval / probe_divisor, episode_step_max, eps))
-        won_last_interval = 0
-        steps_last_interval = 0
-        episode_step_max = 0
-        #print("Max:", episode_sim_max)
-        #print("Min:", episode_sim_min)
-
+print("\nLearn:")
+print("======\n")
+rl_init()
+rl_learn(LEARN_EPISODES)
 
 if not SOFTWARE_ONLY:
+    print("")
     sys.exit(0)
+
+# ----------------------------------------------------------------------------
+# Testing
+# ----------------------------------------------------------------------------
 
 # now, after we learned how to balance the pole: test it and use the visual output of Gym
 print("\nTest:")
