@@ -6,11 +6,26 @@
 # on a cart simulated by a Model-1 by Analog Paradigm (http://analogparadigm.com)
 #
 # Analog part done by vaxman on 2019-07-27, 2019-07-28
-# Digital part done by sy2002 on 2019-07-27, 2019-07-29
+# Digital part done by sy2002 on 2019-07-27, 2019-07-29, 2019-08-03
 
-# if you don't have a Model-1 at hand, set SOFTWARE_ONLY to True
-# to use a software based physics simulation by OpenAI Gym
-SOFTWARE_ONLY     = False
+# ----------------------------------------------------------------------------
+# Global Flags
+# ----------------------------------------------------------------------------
+
+# If you don't have a Model-1 at hand, set SOFTWARE_ONLY to True
+# to use a software based physics simulation by OpenAI Gym.
+SOFTWARE_ONLY           = False
+
+# If the digital computer is too slow to be able to follow the speed of
+# the Model-1 analog computer in real-time, then set SINGLE_STEP to True.
+# It will make sure, that during the calibration and learning phase, the
+# analog computer will be halted while the digital computer is doing its math.
+# Later, during execution phase, the system will always work in realtime.
+SINGLE_STEP_LEARNING    = False
+
+# ----------------------------------------------------------------------------
+# Imports
+# ----------------------------------------------------------------------------
 
 print("\nAnalog Cartpole - A hybrid analog/digital computing experiment")
 print("==============================================================\n")
@@ -165,7 +180,10 @@ def hc_reset_sim():
 # influence simulation by using an impulse to push the cart to the left or to
 # the right; it does not matter if "1" means left or right as long as "0" means
 # the opposite of "1"
-def hc_influence_sim(a):
+def hc_influence_sim(a, is_learning):
+    if is_learning and SINGLE_STEP_LEARNING:
+        hc_send(HC_CMD_OP) #TODO: do this right; instead of flushing in line #200
+
     if (a == 1):
         hc_send(HC_SIM_DIRECTION_1)
     else:
@@ -174,6 +192,12 @@ def hc_influence_sim(a):
     hc_send(HC_SIM_IMPULSE_1)
     sleep(HC_IMPULSE_DURATION / 1000.0)
     hc_send(HC_SIM_IMPULSE_0)
+
+    if is_learning and SINGLE_STEP_LEARNING:
+        #TODO: do this the right way, see also line #185
+        hc_send(HC_CMD_HALT)
+        sleep(0.05)
+        hc_ser.flushInput()
 
 # ----------------------------------------------------------------------------
 # Environment abstraction
@@ -229,11 +253,11 @@ def env_is_done(observation):
         return abs(observation[0]) > 0.9 or abs(observation[2]) > 1.0
 
 # perform action and return observation, reward and "done" flag
-def env_step(action_to_be_done):
+def env_step(action_to_be_done, is_learning=True):
     if SOFTWARE_ONLY:
         observation, r, done, _ = env.step(action_to_be_done)
     else:
-        hc_influence_sim(action_to_be_done)
+        hc_influence_sim(action_to_be_done, is_learning)
         observation = hc_get_sim_state()
         r = 1 # reward each "timestep" with a 1 to reward longevity
         done = env_is_done(observation)  
@@ -482,9 +506,9 @@ def main_test(test_duration):
             episode_step_count += 1
             all_steps += 1
 
-            a, _ = rl_max_Q_s(observation)      # evaluate Value Function and find next action
-            observation, _, _ = env_step(a)     # perform next action and observe result
-            env_render()                        # (software mode) display visualization
+            a, _ = rl_max_Q_s(observation)          # evaluate Value Function and find next action
+            observation, _, _ = env_step(a, False)  # perform next action and observe result
+            env_render()                            # (software mode) display visualization
 
         print("%d\t\t%d" % (episode, episode_step_count))
     print("\nAvg. Steps: %0.2f\n" % (all_steps / test_duration))
