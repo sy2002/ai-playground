@@ -5,7 +5,7 @@
 # Use digital Reinforcement Learning (RL) to learn to balance an inverse pendulum
 # on a cart simulated by a Model-1 by Analog Paradigm (http://analogparadigm.com)
 #
-# Analog part done by vaxman on 2019-07-27, 2019-07-28
+# Analog part done by vaxman on 2019-07-27, 2019-07-28, 2019-08-03
 # Digital part done by sy2002 on 2019-07-27, 2019-07-29, 2019-08-03
 
 # ----------------------------------------------------------------------------
@@ -63,10 +63,10 @@ HC_TIMEOUT          = 0.02          # increase to e.g. 0.05, if you get error #2
 
 HC_IMPULSE_DURATION = 10            # analog impulse duration in milliseconds
 
-HC_SIM_X_POS        = "0261"        # address of cart's x-position
-HC_SIM_X_VEL        = "0260"        # address of cart's x-velocity
-HC_SIM_ANGLE        = "0263"        # address of pole's/pendulum's angle
-HC_SIM_ANGLE_VEL    = "0160"        # address of pole's/pendulum's angular velocity
+HC_SIM_X_POS        = "0223"        # address of cart's x-position
+HC_SIM_X_VEL        = "0222"        # address of cart's x-velocity
+HC_SIM_ANGLE        = "0121"        # address of pole's/pendulum's angle
+HC_SIM_ANGLE_VEL    = "0220"        # address of pole's/pendulum's angular velocity
 
 HC_SIM_DIRECTION_1  = "D0"          # digital out #0=hi: direction = 1, e.g. right
 HC_SIM_DIRECTION_0  = "d0"          # digital out #0=lo: direction = 0, e.g. left
@@ -250,7 +250,7 @@ def env_is_done(observation):
         return abs(observation[0]) > 2.4
     else:
         # episode done, if x-position [0] or angle [2] invalid
-        return abs(observation[0]) > 0.9 or abs(observation[2]) > 1.0
+        return abs(observation[0]) > 0.9 or abs(observation[2]) > 0.05 # 2019-08-03, BU, angepasst 
 
 # perform action and return observation, reward and "done" flag
 def env_step(action_to_be_done, is_learning=True):
@@ -577,3 +577,4 @@ else:
     main_test(duration)
 
 env_close()
+
