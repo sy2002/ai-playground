@@ -52,6 +52,11 @@ if (SOFTWARE_ONLY):
 # Analog Setup
 # ----------------------------------------------------------------------------
 
+# Analog simulation parameters
+HC_IMPULSE_DURATION = 10            # duration [ms] of the impulse, that influences the car
+HC_X_MAX            = 0.9           # maximum |x| of car, otherwise episode done
+HC_ANGLE_MAX        = 0.05          # maximum |angle| of pole, otherwise episode done
+
 # Hybrid Controller serial setup
 HC_PORT             = '/dev/cu.usbserial-DN050L1O'
 HC_BAUD             = 115200        
@@ -61,7 +66,6 @@ HC_STOP             = serial.STOPBITS_ONE
 HC_RTSCTS           = False
 HC_TIMEOUT          = 0.02          # increase to e.g. 0.05, if you get error #2
 
-HC_IMPULSE_DURATION = 10            # analog impulse duration in milliseconds
 
 HC_SIM_X_POS        = "0223"        # address of cart's x-position
 HC_SIM_X_VEL        = "0222"        # address of cart's x-velocity
@@ -207,7 +211,7 @@ env = None
 
 # List of possible actions that the RL agent can perform in the environment.
 # For the algorithm, it doesn't matter if 0 means right and 1 left or vice versa
-# or if # there are more than two possible actions
+# or if there are more than two possible actions
 env_actions = [0, 1] # needs to be in ascending order with no gaps, e.g. [0, 1]
 
 def env_random_action():
@@ -250,7 +254,7 @@ def env_is_done(observation):
         return abs(observation[0]) > 2.4
     else:
         # episode done, if x-position [0] or angle [2] invalid
-        return abs(observation[0]) > 0.9 or abs(observation[2]) > 0.05 # 2019-08-03, BU, angepasst 
+        return abs(observation[0]) > HC_X_MAX or abs(observation[2]) > HC_ANGLE_MAX
 
 # perform action and return observation, reward and "done" flag
 def env_step(action_to_be_done, is_learning=True):
@@ -577,4 +581,3 @@ else:
     main_test(duration)
 
 env_close()
-
