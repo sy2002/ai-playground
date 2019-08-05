@@ -55,7 +55,7 @@ if (SOFTWARE_ONLY):
 # Analog simulation parameters
 HC_IMPULSE_DURATION = 10            # duration [ms] of the impulse, that influences the car
 HC_X_MAX            = 0.9           # maximum |x| of car, otherwise episode done
-HC_ANGLE_MAX        = 0.05          # maximum |angle| of pole, otherwise episode done
+HC_ANGLE_MAX        = 0.5           # maximum |angle| of pole, otherwise episode done
 
 # Hybrid Controller serial setup
 HC_PORT             = '/dev/cu.usbserial-DN050L1O'
@@ -66,17 +66,18 @@ HC_STOP             = serial.STOPBITS_ONE
 HC_RTSCTS           = False
 HC_TIMEOUT          = 0.02          # increase to e.g. 0.05, if you get error #2
 
-
+# Addresses of the environment/simulation data
 HC_SIM_X_POS        = "0223"        # address of cart's x-position
 HC_SIM_X_VEL        = "0222"        # address of cart's x-velocity
-HC_SIM_ANGLE        = "0121"        # address of pole's/pendulum's angle
-HC_SIM_ANGLE_VEL    = "0220"        # address of pole's/pendulum's angular velocity
+HC_SIM_ANGLE        = "0161"        # address of pole's/pendulum's angle
+HC_SIM_ANGLE_VEL    = "0160"        # address of pole's/pendulum's angular velocity
 
 HC_SIM_DIRECTION_1  = "D0"          # digital out #0=hi: direction = 1, e.g. right
 HC_SIM_DIRECTION_0  = "d0"          # digital out #0=lo: direction = 0, e.g. left
 HC_SIM_IMPULSE_1    = "D1"          # digital out #1=hi: apply force
 HC_SIM_IMPULSE_0    = "d1"          # digital out #1=lo: stop applying force
 
+# Model-1 Hybrid Controller: commands and responses
 HC_CMD_RESET        = "x"           # reset hybrid controller, try multiple times until response received
 HC_CMD_INIT         = "i"           # initial condition (i.e. pendulum is upright)
 HC_CMD_OP           = "o"           # start to operate
@@ -125,7 +126,11 @@ if not SOFTWARE_ONLY:
         print("ERROR #1: SERIAL PORT CANNOT BE OPENED.")
         sys.exit(1)
 
+dbg_last_sent = ""
+
 def hc_send(cmd):
+    global dbg_last_sent
+    dbg_last_sent = cmd
     hc_ser.write(cmd.encode("ASCII"))
 
 def hc_receive():
@@ -141,6 +146,9 @@ def hc_res2float(str):
         return f
     except:
         print("ERROR #2: FLOAT CONVERSION:", str)
+        print("Last command sent:", dbg_last_sent)
+        print("Length of received string:", len(str))
+        print("Hex output of received string:", ":".join("{:02x}".format(ord(c)) for c in str))
         sys.exit(2)
 
 # ask for a value and give the system 1ms to return it
