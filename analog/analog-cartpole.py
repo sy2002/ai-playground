@@ -382,10 +382,9 @@ def rl_learn(learning_duration, record_observations=False):
     else:
         recorded_obs = None
 
-    print("Episode\t\tMean Steps\tMedian Steps\tMin. Steps\tMax. Steps\tEpsilon")
-
     t = 1.0                             # used to decay epsilon
     probe_episode_step_count = []       # used for probe stats: mean, median, min, max
+    tprint("Episode", "Mean Steps", "Median Steps", "Min. Steps", "Max. Steps", "Epsilon")
 
     for episode in range(learning_duration + 1):
         # let epsilon decay over time
@@ -435,12 +434,12 @@ def rl_learn(learning_duration, record_observations=False):
         # every PROBEth episode: print status info
         probe_episode_step_count.append(episode_step_count)
         if episode % PROBE == 0:
-            print("%d\t\t%0.2f\t\t%0.2f\t\t%d\t\t%d\t\t%0.4f" % (   episode, 
-                                                                    np.mean(probe_episode_step_count),
-                                                                    np.median(probe_episode_step_count),
-                                                                    np.min(probe_episode_step_count),
-                                                                    np.max(probe_episode_step_count),
-                                                                    eps))
+            tprint("%d" % episode,
+                   "%0.2f" % np.mean(probe_episode_step_count),
+                   "%0.2f" % np.median(probe_episode_step_count),
+                   "%d" % np.min(probe_episode_step_count),
+                   "%d" % np.max(probe_episode_step_count),
+                   "%0.4f" % eps)
             probe_episode_step_count = []
 
     return recorded_obs
@@ -505,7 +504,7 @@ def main_learn(save_file):
 def main_test(test_duration):
     print("\nTest:")
     print("=====\n")
-    print("Episode\t\tResult")
+    tprint("Episode", "Result")
 
     all_steps = 0
     for episode in range(test_duration):
@@ -522,16 +521,21 @@ def main_test(test_duration):
             observation, _, _ = env_step(a, False)  # perform next action and observe result
             env_render()                            # (software mode) display visualization
 
-        print("%d\t\t%d" % (episode, episode_step_count))
+        tprint("%d" % episode, "%d" % episode_step_count)
     print("\nAvg. Steps: %0.2f\n" % (all_steps / test_duration))
 
 # ----------------------------------------------------------------------------
-# Command line handling
+# Command line handling and tools
 # ----------------------------------------------------------------------------
 
 MAIN_MODE_STD   = 0     # standard mode: calibrate, learn, test
 MAIN_MODE_SAVE  = 1     # like standard mode, but save calibration and learned state
 MAIN_MODE_LOAD  = 2     # execute only: load calibration and learned state and run/test it
+
+def tprint(*argv):
+    for arg in argv:
+        print(arg.ljust(16), end="")
+    print("")
 
 def parse_args():
     argc = len(sys.argv)
