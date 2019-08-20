@@ -595,7 +595,7 @@ env_prepare()
 
 if mode != MAIN_MODE_LOAD:
     if PERFORM_CALIBRATION:
-    main_calibrate()
+        main_calibrate()
     main_learn(filename)
     main_test(TEST_EPISODES)
 else:
