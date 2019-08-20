@@ -168,14 +168,14 @@ def hc_get_sim_state():
     # bulk transfer: ask for all values that constitue the state in
     # a bulk and read them in a bulk
     if HC_BULK:
-    hc_ask_for_value(HC_SIM_X_POS)
-    hc_ask_for_value(HC_SIM_X_VEL)    
-    hc_ask_for_value(HC_SIM_ANGLE)
-    hc_ask_for_value(HC_SIM_ANGLE_VEL)
-    return (    hc_res2float(hc_receive()),
-                hc_res2float(hc_receive()),
-                hc_res2float(hc_receive()),
-                hc_res2float(hc_receive()))
+        hc_ask_for_value(HC_SIM_X_POS)
+        hc_ask_for_value(HC_SIM_X_VEL)    
+        hc_ask_for_value(HC_SIM_ANGLE)
+        hc_ask_for_value(HC_SIM_ANGLE_VEL)
+        return (    hc_res2float(hc_receive()),
+                    hc_res2float(hc_receive()),
+                    hc_res2float(hc_receive()),
+                    hc_res2float(hc_receive()))
     else:
         hc_ask_for_value(HC_SIM_X_POS)
         res_x_pos = hc_res2float(hc_receive())
