@@ -25,6 +25,10 @@ print("\nHC Mini Terminal, done by sy2002 on 27th of July 2019")
 print("=====================================================\n")
 print("press CTRL+Q to exit\n")
 
+serial_port = sys.argv[1]
+if serial_port != "":
+    HC_PORT = serial_port
+
 try:
     ser = serial.Serial(    port=HC_PORT,
                             baudrate=115200,

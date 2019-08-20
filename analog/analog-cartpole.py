@@ -6,7 +6,7 @@
 # on a cart simulated by a Model-1 by Analog Paradigm (http://analogparadigm.com)
 #
 # Analog part done by vaxman on 2019-07-27, 2019-07-28, 2019-08-03
-# Digital part done by sy2002 on 2019-07-27, 2019-07-29, 2019-08-03
+# Digital part done by sy2002 on 2019-07-27, 2019-07-29, 2019-08-03, 2019-08-20
 
 # ----------------------------------------------------------------------------
 # Global Flags
@@ -15,6 +15,10 @@
 # If you don't have a Model-1 at hand, set SOFTWARE_ONLY to True
 # to use a software based physics simulation by OpenAI Gym.
 SOFTWARE_ONLY           = False
+
+# Use this switch to toggle calibration.
+# It seems, that without calibration the system runs better on real hardware.
+PERFORM_CALIBRATION     = False
 
 # If the digital computer is too slow to be able to follow the speed of
 # the Model-1 analog computer in real-time, then set SINGLE_STEP to True.
@@ -58,13 +62,14 @@ HC_X_MAX            = 0.9           # maximum |x| of car, otherwise episode done
 HC_ANGLE_MAX        = 0.5           # maximum |angle| of pole, otherwise episode done
 
 # Hybrid Controller serial setup
-HC_PORT             = '/dev/cu.usbserial-DN050L1O'
+HC_PORT             = "/dev/cu.usbserial-DN050L1O"
 HC_BAUD             = 115200        
 HC_BYTE             = 8
 HC_PARITY           = serial.PARITY_NONE
 HC_STOP             = serial.STOPBITS_ONE
 HC_RTSCTS           = False
 HC_TIMEOUT          = 0.02          # increase to e.g. 0.05, if you get error #2
+HC_BULK             = False         # use bulk communication in hc_get_sim_state()
 
 # Addresses of the environment/simulation data
 HC_SIM_X_POS        = "0223"        # address of cart's x-position
@@ -121,12 +126,13 @@ if not SOFTWARE_ONLY:
                                 baudrate=HC_BAUD,
                                 bytesize=HC_BYTE, parity=HC_PARITY, stopbits=HC_STOP,
                                 rtscts=HC_RTSCTS,
+                                dsrdtr=False,
                                 timeout=HC_TIMEOUT)
+        sleep(1.5) #https://pyserial.readthedocs.io/en/latest/appendix.html: FAQ
+        dbg_last_sent = ""
     except:
         print("ERROR #1: SERIAL PORT CANNOT BE OPENED.")
         sys.exit(1)
-
-dbg_last_sent = ""
 
 def hc_send(cmd):
     global dbg_last_sent
@@ -151,24 +157,17 @@ def hc_res2float(str):
         print("Hex output of received string:", ":".join("{:02x}".format(ord(c)) for c in str))
         sys.exit(2)
 
-# ask for a value and give the system 1ms to return it
+# ask for a value
 def hc_ask_for_value(addr):
-    # TODO validate educated guess and learn why:
-    # for some timing reason we need to send the command first
-    # and then the address in another send, otherwise the
-    # hardware performs not stable, so we cannot do:
-    # hc_send(HC_CMD_GETVAL + addr)
-    hc_send(HC_CMD_GETVAL)
-    hc_send(addr)
-    sleep(0.001)
+    hc_send(HC_CMD_GETVAL + addr)
 
-# Ask for the 4 relevant values that the simulation state consists of
-# and let the serial buffer be filled with the results. Then read four
-# "lines" from the serial buffer that are containing the results and
-# convert them to floats.
-# We are doing it this way (instead of fetching each value one at a time),
-# because for some reason pySerial seems to be slow while reading
+# query the current state of the simulation, which consists of
+# the x-pos and the the x-velocity of the cart, the angle and
+# angle velocity of the pole/pendulum
 def hc_get_sim_state():
+    # bulk transfer: ask for all values that constitue the state in
+    # a bulk and read them in a bulk
+    if HC_BULK:
     hc_ask_for_value(HC_SIM_X_POS)
     hc_ask_for_value(HC_SIM_X_VEL)    
     hc_ask_for_value(HC_SIM_ANGLE)
@@ -177,6 +176,16 @@ def hc_get_sim_state():
                 hc_res2float(hc_receive()),
                 hc_res2float(hc_receive()),
                 hc_res2float(hc_receive()))
+    else:
+        hc_ask_for_value(HC_SIM_X_POS)
+        res_x_pos = hc_res2float(hc_receive())
+        hc_ask_for_value(HC_SIM_X_VEL)
+        res_x_vel = hc_res2float(hc_receive())    
+        hc_ask_for_value(HC_SIM_ANGLE)
+        res_angle = hc_res2float(hc_receive())
+        hc_ask_for_value(HC_SIM_ANGLE_VEL)
+        res_anvel = hc_res2float(hc_receive())
+        return (res_x_pos, res_x_vel, res_angle, res_anvel)
 
 # bring the simulation back to the initial condition (pendulum is upright)
 def hc_reset_sim():
@@ -585,6 +594,7 @@ mode, filename, duration = parse_args()
 env_prepare()
 
 if mode != MAIN_MODE_LOAD:
+    if PERFORM_CALIBRATION:
     main_calibrate()
     main_learn(filename)
     main_test(TEST_EPISODES)
