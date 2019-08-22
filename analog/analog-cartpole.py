@@ -99,7 +99,6 @@ RBF_EXEMPLARS       = 250           # amount of exemplars per "gamma instance" o
 RBF_GAMMA_COUNT     = 10            # amount of "gamma instances", i.e. RBF_EXEMPLARS x RBF_GAMMA_COUNT features
 RBF_GAMMA_MIN       = 0.05          # minimum gamma, linear interpolation between min and max
 RBF_GAMMA_MAX       = 4.0           # maximum gamma
-RBF_SAMPLING        = 100           # amount of episodes to learn for initializing the scaler
 
 CLBR_RND_EPISODES   = 500           # during calibration: number of random episodes
 CLBR_LEARN_EPISODES = 200           # during calibration: number of learning episodes
@@ -217,7 +216,7 @@ def hc_influence_sim(a, is_learning):
     if is_learning and SINGLE_STEP_LEARNING:
         #TODO: do this the right way, see also line #185
         hc_send(HC_CMD_HALT)
-        sleep(0.05)
+        sleep(0.025) #20ms seems to  be the lowest boundary, to be safe: use 25ms
         hc_ser.flushInput()
 
 # ----------------------------------------------------------------------------
