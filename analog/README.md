@@ -7,7 +7,7 @@ Analog Paradigm (http://analogparadigm.com)
 Done in July to September 2019. Analog part by vaxman.
 Digital part by sy2002.
 
-[![Alt text](doc/model-1-play.png)](https://www.youtube.com/watch?v=5PpsEw80j3M)
+[![Alt text](doc/model-1-play.jpg)](https://www.youtube.com/watch?v=5PpsEw80j3M)
 
 Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.
 
