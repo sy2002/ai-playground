@@ -59,7 +59,7 @@ if (SOFTWARE_ONLY):
 # Analog simulation parameters
 HC_IMPULSE_DURATION = 10            # duration [ms] of the impulse, that influences the car
 HC_X_MAX            = 0.9           # maximum |x| of car, otherwise episode done
-HC_ANGLE_MAX        = 0.5           # maximum |angle| of pole, otherwise episode done
+HC_ANGLE_MAX        = 0.5           # maximum |angle| of pole, otherwise episode done (0.5 rad = 28.6°)
 
 # Hybrid Controller serial setup
 HC_PORT             = "/dev/cu.usbserial-DN050L1O"
