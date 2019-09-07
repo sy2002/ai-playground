@@ -50,3 +50,13 @@ everything is still kind of as you would expect from the name RBFSampler.
 
 You can also try the experiment live and interactively on Kaggle using
 [this Kaggle Kernel](https://www.kaggle.com/sy2002/rbfsampler-actually-is-not-using-any-rbfs).
+
+### ANALOG-CARTPOLE - A hybrid analog/digital computing experiment
+
+This is a hybrid computing experiment: Use the analog computer
+"Model-1" by Analog Paradigm (http://analogparadigm.com) to simulate an
+inverse pendulum. In parallel, use a digital computer to execute a digital
+Reinforcement Learning algorithm that controls the analog computer.
+
+Switch to the folder [analog](analog) to learn more or watch a short
+[introduction to this experiment on YouTube](https://youtu.be/jDGLh8YWvNE).
