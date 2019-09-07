@@ -7,8 +7,64 @@ Analog Paradigm (http://analogparadigm.com)
 Done in July to September 2019. Analog part by vaxman.
 Digital part by sy2002.
 
-[![Alt text](doc/model-1-play.jpg)](https://www.youtube.com/watch?v=5PpsEw80j3M)
+Watch a short introduction to this experiment on YouTube by clicking the
+image below or by using this link:   
+[https://www.youtube.com/watch?v=5PpsEw80j3M](https://www.youtube.com/watch?v=5PpsEw80j3M)
 
-Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet.
+[![YouTube Link Image](doc/model-1-play.jpg)](https://www.youtube.com/watch?v=5PpsEw80j3M)
 
-![Analog-Paradigm-Model-1](doc/model-1-with-program.jpg)
+One of the classical "Hello World" examples of Reinforcement Learning is
+the inverse pendulum. A pole is mounted on a cart. The cart can move in one
+dimension, for example to the left or to the right. The center of mass is
+located above the pivot point as shown in the following image:
+
+![Schematic](doc/schematic.png)
+
+A force is applied to move the cart to the right and to the left to keep
+the pendulum upright. Important parameters of this system are: the position
+of the cart, the velocity of the cart, the angle of the pole and
+the angular velocity.
+
+For training your reinforcement learning algorithms,
+[OpenAI Gym offers a simulation](http://gym.openai.com/envs/CartPole-v1/)
+of a simplified version of this model that delivers exactly these
+four parameters for your control algorithm and that expects that you keep
+appling impulses from the left or from the right to keep the pole upright.
+
+In our experiment, we used a Model-1 from Analog Paradigm to create an
+analog version of OpenAI Gym's simulation. Here is our setup:
+
+![Setup of the Experiment](doc/setup.jpg)
+
+You can see Model-1 on the right side. The algoithm (shown below) is wired on
+the Model-1 using the black, blue, yellow and red cables. On top of Model-1,
+there is an oscilloscope that shows the output of some training episodes of
+the reinforcement learning algorithm. On the left is a Mac, on which a Python
+script runs the reinforcement learning and which uses Model-1's Hybrid
+Controller to send commands from the digital computer to the analog computer.
+
+The oscilloscope on the right shows the control actions of the Python script:
+A bar in the middle means "controls nothing" but "calculates and learns". A
+bar on top means push cart to the right and a bar on the bottom means push
+cart to the left.
+
+### Analog simulation of the inverse pendulum
+
+Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy
+eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam
+voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet
+clita kasd gubergren.
+
+![Algorithm Schematics](doc/algorithm.png)
+
+Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie
+consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et
+accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit
+augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet.
+
+![Algorithm Schematics](doc/control.png)
+
+At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd
+gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum
+dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor
+invidunt ut labore et dolore magna aliquyam erat, sed diam.
