@@ -9,9 +9,9 @@ Digital part by sy2002.
 
 Watch a short introduction to this experiment on YouTube by clicking the
 image below or by using this link:   
-[https://www.youtube.com/watch?v=5PpsEw80j3M](https://www.youtube.com/watch?v=5PpsEw80j3M)
+[https://youtu.be/jDGLh8YWvNE](https://youtu.be/jDGLh8YWvNE)
 
-[![YouTube Link Image](doc/model-1-play.jpg)](https://www.youtube.com/watch?v=5PpsEw80j3M)
+[![YouTube Link Image](doc/model-1-play.jpg)](https://youtu.be/jDGLh8YWvNE)
 
 One of the classical "Hello World" examples of Reinforcement Learning is
 the inverse pendulum. A pole is mounted on a cart. The cart can move in one
@@ -63,6 +63,25 @@ accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit
 augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet.
 
 ![Algorithm Schematics](doc/control.png)
+
+At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd
+gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum
+dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor
+invidunt ut labore et dolore magna aliquyam erat, sed diam.
+
+### Digital reinforcement learning using the analog computer
+
+Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy
+eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam
+voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet
+clita kasd gubergren.
+
+[analog-cartpole.py](analog-cartpole.py)
+
+Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie
+consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et
+accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit
+augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet.
 
 At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd
 gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum
