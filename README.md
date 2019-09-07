@@ -27,7 +27,7 @@ to the [HWD-Perceptron Repository](https://github.com/sy2002/HWD-Perceptron) to 
 
 ### Solve Mazes
 
-The programs `maze_runner.py` and `maze_runner_q_mp.py` in the folder [Maze](maze) are
+The programs `maze_runner.py` and `maze_runner_q_mp.py` in the folder [maze](maze) are
 using Reinforcement Learning to solve mazes of arbitrary sizes.
 Have a look at these [Demos](http://www.sy2002.de/maze) to get an idea.
 
