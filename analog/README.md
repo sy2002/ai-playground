@@ -128,7 +128,7 @@ this yields much better results on OpenAI Gym's simulation and you should set
 compensating the slowness of the Python script in the "real world realm" of
 analog computers.
 
-#### Reinforcement Learning
+#### Reinforcement Learning: Q-Learning
 
 We apply [Reinforcement Learning](https://en.wikipedia.org/wiki/Reinforcement_learning)
 to balance the CartPole. For doing so, the following four features are used to
@@ -144,30 +144,194 @@ And the `State` enables the `Agent` to decide, which `Action` to perform next.
 
 ![Diagram explaining the basics of RL](https://upload.wikimedia.org/wikipedia/commons/1/1b/Reinforcement_learning_diagram.svg)
 
+#### Implementation specifics
 
-* When we use a collection of (aka "network") of Radial Basis Functions (RBFs), then we can transform
-  these 4 features into n distances from the centers of the RBFs, where n = RBF_EXEMPLARS x RBF_GAMMA_COUNT
-* The "Gamma" parameter controls the "width" of the RBF's bell curve. The idea is, to use multiple RBFSamplers
-  with multiple widths to construct a network with a good variety to sample from.
-* The RBF transforms the initial 4 features into plenty of features and therefore offers a lot of "variables"
-  or something like "resolution", where a Linear Regression algorithm can calcluate the weights for.
-  In contrast, the original four features of the observation space would yield a too "low resolution".
-* The Reinforcement Learning algorithm used to learn to balance the pole is Q-Learning.
-* The "State" "s" of the Cart is obtained by using the above-mentioned RBF Network to transform the four
-  original features into the n distances from a randomly chosen amount of RBF centers (aka "Exemplars").
-  Note that it is absolutely OK, that the Exemplars are chosen randomly, because each Exemplar defines one
-  possible combination of (Cart Position, Cart Velocity, Pole Angle and Pole Velocity At Tip); and therefore
-  having lots of those random Exemplars just gives us the granularity ("resolution") we need for our Linear Regression.
-* The possible "Actions" "a" of the system are "push from left" or "push from right", aka 0 and 1.
-* For each possible action we are calculating one Value Function using Linear Regression. It can be illustrated by
-  asking the question: "For the state we are currently in, defined by the distances to the Exemplars, what is the
-  Value Function for pushing from left or puhsing from right. The larger one wins."
+If you are new to Q-learning, then
+[this simple introduction](https://www.freecodecamp.org/news/an-introduction-to-q-learning-reinforcement-learning-14ac0b4493cc/)
+might be helpful. But in contrast to this simple example, the feature space of
+cart position, cart velocity, pole angle and angular velocity is pretty large:
+Normalizing all of them to the interval [0, 1], and each state consisting
+of these four dimensions will lead to an infinite amount of possible states.
+Therefore a naive tabular or discrete approach, will be far from optimal.
 
-On RBFSampler:
+This is why we decided to choose another way of representing the states: The
+current state `s` shall be defined as the distance of the four features
+(cart position, cart velocity, pole angle, angular velocity) to a big amount
+of randomly chosen "example states" that we are calling `Exemplars` inside
+[analog-cartpole.py](analog-cartpole.py). In other words, the `Exemplars` are
+just an amount of `n` randomly chosen "situations" in which the CartPole could
+be in, and a "situation" is a random instance of
+(cart position, cart velocity, pole angle, angular velocity).
+And therefore a state `s` is nothing else than the combined "similarity"
+of `s` to all of the `Exemplars`.
 
-Despite its name, the RBFSampler is actually not using any RBFs inside. I did some experiments about
-this fact. Go to https://github.com/sy2002/ai-playground/blob/master/RBFSampler-Experiment.ipynb 
-to learn more.
+The result of this approach is, that `s` is *not* represented as a four
+dimensional vector of (cart position, cart velocity, pole angle, angular velocity).
+Instead, we are doing a feature transformation from these four features
+(i.e. 4-dimensional vector) to `n` `Exemplar`-distances, yielding an
+`n`-dimensional vector.
+
+This transformation gives us enough "resolution" (or in other words a sufficiently
+large `n` dimensional space) that allows us, to use
+[Linear Regression](https://en.wikipedia.org/wiki/Linear_regression) to find
+the `Value Function`. Obviously, we could not do this with a 4-dimensional
+linear function, as it would not be able to model the complex behaviour
+of the CartPole.
+
+The next challenge is, that we are not having all input variables handy to
+solve the Linear Regression in one step. Instead, Q-learning means stepwise
+learning. Therefore it is very useful, that
+[scikit-learn](https://scikit-learn.org)'s Linear Regression class/algorithm
+[SGDRegressor](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDRegressor.html)
+offers a `partial_fit` function that performs one epoch of stochastic gradient descent
+on our given sample at a time. In our code, this is implemented in the function
+`rl_set_Q_s_a`, which learns the next iteration of the `Value Function` for a
+given action `a` in the current state `s`: It calls the `partial_fit` function of
+SGDRegressor:
+
+```
+def rl_set_Q_s_a(s, a, val):
+    rbf_net[a].partial_fit(rl_transform_s(s), rl_transform_val(val))
+```
+ 
+Linear functions are not able to model the non-linear behaviour of CartPole. That means
+if we want to stick to Linear Regression as our means of "storing" Q-learning's results
+(i.e. finding the `Value Function`), we need to add the non-linearity in another way:
+This is why we chose to measure the distance betweeen the current "situation" of
+(cart position, cart velocity, pole angle, angular velocity) to the `Exemplars`
+by using non-linear Gaussian
+[Radial Basis Functions](https://en.wikipedia.org/wiki/Radial_basis_function).
+The shape of Gaussian Radial Basis Functions (RBFs) can be
+defined using a parameter called epsilon, here are some examples:
+
+![Wikipedia Image of RBFs](https://upload.wikimedia.org/wikipedia/commons/9/96/Gaussian_function_shape_parameter.png) 
+
+scikit-learn offers a convenient class called
+[RBFSampler](https://scikit-learn.org/stable/modules/generated/sklearn.kernel_approximation.RBFSampler.html).
+The *epsilon* parameter mentioned above is called *gamma* there. The `transform` function of RBFSampler can be used
+to transform (cart position, cart velocity, pole angle, angular velocity) to the `n` distances to the `Exemplars`
+represented by the RBFSampler and the `n_components` parameter used in RBFSampler's constructor is exactly
+the amount `n` we are talking about. In our code, `n` is called `RBF_EXEMPLARS` (250 by default).
+
+To be sure we have enough variance and "resolution", we decided to use a whole bunch of RBFSamplers, each
+of them using a different gamma parameter: The range goes from `RBF_GAMMA_MIN` (0.05 by default) to
+`RBF_GAMMA_MAX` (4.0 by default) and we are instanciating `RBF_GAMMA_COUNT` (10 by default) RBFSamplers,
+which are conveniently bundled in a [FeatureUnion](https://scikit-learn.org/stable/modules/generated/sklearn.pipeline.FeatureUnion.html).
+The FeatureUnion, which we call `rbfs` in our code, allows us to call the `transform` function of
+all those RBFSamplers within one function call and to collect the output in one 2,500 dimensional vector
+(250 RBF_EXEMPLARS x 10 RBF_GAMMA_COUNT). The `rl_transform` function is doing exactly this:
+
+```
+# the RBF network is built like this: create as many RBFSamplers as RBF_GAMMA_COUNT
+# and do so by setting the "width" parameter GAMMA of the RBFs as a linear interpolation
+# between RBF_GAMMA_MIN and RBF_GAMMA_MAX
+gammas = np.linspace(RBF_GAMMA_MIN, RBF_GAMMA_MAX, RBF_GAMMA_COUNT)
+models = [RBFSampler(n_components=RBF_EXEMPLARS, gamma=g) for g in gammas]
+
+# we will put all these RBFSamplers into a FeatureUnion, so that our Linear Regression
+# can regard them as one single feature space spanning over all "Gammas"
+transformer_list = []
+for model in models:
+    model.fit([[1.0, 1.0, 1.0, 1.0]]) # RBFSampler just needs the dimensionality, not the data itself
+    transformer_list.append((str(model), model))
+rbfs = FeatureUnion(transformer_list)     #union of all RBF exemplar's output
+
+[...]
+
+def rl_transform_s(s):
+    if scaler == None:  # during calibration, we do not have a scaler, yet
+        return rbfs.transform(np.array(s).reshape(1, -1))
+    else:
+        return rbfs.transform(scaler.transform(np.array(s).reshape(1, -1)))
+```
+
+We are not having one `Value Function` but two of them: One for each action `a`, that is possible in our
+environment. And when it comes to decide, which action to take, our agent is looking for the highest
+`Value Function` over all actions for a given state `s` and to decide which action `a` to take.
+There are two actions possible: Push the cart from the left and push the cart from
+the right. The two `Value Functions` are represented by the current approximation done by the
+Linear Regression, this is why the list `rbf_net` is defined as a list of SGDRegressors and
+why above-mentioned `rl_set_Q_s_a` function uses `rbf_net[a]`:
+
+```
+# List of possible actions that the RL agent can perform in the environment.
+# For the algorithm, it doesn't matter if 0 means right and 1 left or vice versa
+# or if there are more than two possible actions
+env_actions = [0, 1] # needs to be in ascending order with no gaps, e.g. [0, 1]
+
+[...]
+
+rbf_net = [SGDRegressor(eta0=ALPHA, power_t=ALPHA_DECAY, learning_rate='invscaling', max_iter=5, tol=float("-inf"))
+        for i in range(len(env_actions))]
+```
+
+In the analog world, a "push" is never something discrete. In contrast, to "push something into
+a direction" is more like applying a force to something for a certain period of time. And this
+is exactly what we do, when we "push" the cart, i.e. execute action `0` or action `1`.
+The constant `HC_IMPULSE_DURATION` defines, how many milliseconds the force shall be applied to
+the cart, when "pushing" it into a certain direction.
+
+The Q-learning itself is implemented pretty straightforwardly. This README.md does not contain
+an explanaton how Q-learning or Reinforcement Learning works, but is focused on the specific
+implementation choices we made. So the following list gives only the high-level view on
+our implementation of the Q-learning algorithm. More details can be found in
+[Richard Sutton's and Andrew Barto's book](http://www.incompleteideas.net/book/RLbook2018trimmed.pdf).
+
+
+1. Given the current state `s`: Decide with the probability of `EPSILON`, if we want to "exploit"
+   (means "use") the currently learned `Value Function` to decide which action to take - or - if we'd
+   like to "explore" other options (means choose a random action).
+2. Perform the action `a`, get the reward `r` and enter state `s2`. (The state `s2` is the
+   state that we arrive in, when we perform action `a` in state `s`.)
+3. Get the next best action `a2` given our current state `s2` by greedily looking for
+   the highest `Value Function` over all actions that are possible in `s2`.
+4. Learn: Modify the `Value Function` for (`s`|`a`) by utilizing the highest possible
+   rewards in the successor state `s2` after having performed action `a2` and respect
+   the discount factor `GAMMA` and the learning rate `ALPHA`. 
+5. If not done (i.e. the pole has fallen or the whole experiment runs a predefined amount
+   of steps): Repeat and go to (1).
+
+The following code snipped is abbreviated code from [analog-cartpole.py](analog-cartpole.py)
+that implements the steps shown above. The function `rl_get_Q_s_a` that is used there has not been
+explained, yet: It uses the Linear Regression algorithm SGDRegressor to output (aka "predict")
+the currently learned version of the `Value Function` for a given pair (`s`|`a`). And `env_step`
+is modifying the environment by performing action `a`; in our case this means: The cart is
+recieving an impulse either from the left or from the right.
+
+```
+while not done:
+    # epsilon-greedy: do a random move with the decayed EPSILON probability
+    if p > (1 - eps):
+        a = np.random.choice(env_actions)
+
+    # exploit or explore and collect reward
+    observation, r, done = env_step(a)            
+    s2 = observation
+
+    # Q-Learning
+    old_qsa = rl_get_Q_s_a(s, a)
+    # if this is not the terminal position (which has no actions), then we can proceed as normal
+    if not done:
+        # "Q-greedily" grab the gain of the best step forward from here
+        a2, max_q_s2a2 = rl_max_Q_s(s2)
+    else:
+        a2 = a
+        max_q_s2a2 = 0 # G (future rewards) of terminal position is 0 although the reward r is high
+
+    # learn the new value for the Value Function
+    new_value = old_qsa + (r + GAMMA * max_q_s2a2 - old_qsa)
+    rl_set_Q_s_a(s, a, new_value)
+
+    # next state = current state, next action is the "Q-greedy" best action
+    s = s2
+    a = a2        
+```
+
+A last note that is not necessarily relevant for understanding how the algorithm works, but
+that might still be interessting: Despite its name, the RBFSampler is actually not using
+any RBFs inside. You can find
+[some experiments and explanations here](https://github.com/sy2002/ai-playground/blob/master/RBFSampler-Experiment.ipynb)
+to learn more about this.
 
 ### Results
 

@@ -425,8 +425,6 @@ def rl_learn(learning_duration, record_observations=False):
             if not done:
                 # "Q-greedily" grab the gain of the best step forward from here
                 a2, max_q_s2a2 = rl_max_Q_s(s2)
-
-            # else change the rewards in the terminal position to have a clearer bias for "longevity"
             else:
                 a2 = a
                 max_q_s2a2 = 0 # G (future rewards) of terminal position is 0 although the reward r is high
