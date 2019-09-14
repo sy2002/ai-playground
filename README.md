@@ -26,7 +26,7 @@ from the project's root folder.
 The HWD-Perceptron project was my first attempt to learn how a Perceptron works by implementing
 it from scratch. I used the very well known MIST dataset to do handwritten digits recognition.
 
-This project is a ready-to-go Python app that lets you learn more about Neural Networks and
+The project is a ready-to-go Python app that lets you learn more about Neural Networks and
 Machine Learning in general and more about simple Perceptron based handwritten digits
 recognition in particular.
 
@@ -61,6 +61,8 @@ You can also try the experiment live and interactively on Kaggle using
 [this Kaggle Kernel](https://www.kaggle.com/sy2002/rbfsampler-actually-is-not-using-any-rbfs).
 
 ### ANALOG-CARTPOLE - A hybrid analog/digital computing experiment
+
+<img align="left" width="200" height="150" src="http://sy2002.de/analog-model-1.jpg">
 
 This is a hybrid computing experiment: Use the analog computer
 "Model-1" by Analog Paradigm (http://analogparadigm.com) to simulate an
