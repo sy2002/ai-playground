@@ -7,6 +7,7 @@
 #
 # Analog part done by vaxman on 2019-07-27, 2019-07-28, 2019-08-03
 # Digital part done by sy2002 on 2019-07-27, 2019-07-29, 2019-08-03, 2019-08-20
+# Changed to readout groups by vaxman on 2019-09-05
 
 # ----------------------------------------------------------------------------
 # Global Flags
@@ -69,7 +70,7 @@ HC_PARITY           = serial.PARITY_NONE
 HC_STOP             = serial.STOPBITS_ONE
 HC_RTSCTS           = False
 HC_TIMEOUT          = 0.02          # increase to e.g. 0.05, if you get error #2
-HC_BULK             = False         # use bulk communication in hc_get_sim_state()
+HC_BULK             = True          # use bulk communication in hc_get_sim_state()
 
 # Addresses of the environment/simulation data
 HC_SIM_X_POS        = "0223"        # address of cart's x-position
@@ -104,7 +105,7 @@ CLBR_RND_EPISODES   = 500           # during calibration: number of random episo
 CLBR_LEARN_EPISODES = 200           # during calibration: number of learning episodes
 LEARN_EPISODES      = 2000          # real learning: # of episodes to learn
 TEST_EPISODES       = 10            # software only: # of episodes  we use the visual rendering to test what we learned
-TEST_MAX_STEPS      = 5000          # maximum amount of steps during test/execution phase
+TEST_MAX_STEPS      = 25000         # maximum amount of steps during test/execution phase
 
 GAMMA               = 0.999         # discount factor for Q-Learning
 ALPHA               = 0.3           # initial learning rate
@@ -167,14 +168,9 @@ def hc_get_sim_state():
     # bulk transfer: ask for all values that constitue the state in
     # a bulk and read them in a bulk
     if HC_BULK:
-        hc_ask_for_value(HC_SIM_X_POS)
-        hc_ask_for_value(HC_SIM_X_VEL)    
-        hc_ask_for_value(HC_SIM_ANGLE)
-        hc_ask_for_value(HC_SIM_ANGLE_VEL)
-        return (    hc_res2float(hc_receive()),
-                    hc_res2float(hc_receive()),
-                    hc_res2float(hc_receive()),
-                    hc_res2float(hc_receive()))
+        hc_send('f')
+        (res_x_pos, res_x_vel, res_angle, res_angle_vel) = hc_receive().split(';')
+        return (hc_res2float(res_x_pos), hc_res2float(res_x_vel), hc_res2float(res_angle), hc_res2float(res_angle_vel))
     else:
         hc_ask_for_value(HC_SIM_X_POS)
         res_x_pos = hc_res2float(hc_receive())
@@ -250,6 +246,9 @@ def env_prepare():
             received = hc_receive()
             if received != "":
                 print("  received:", received)
+        # for HC_BULK mode: define a readout group in the hybrid controller        
+        if HC_BULK:
+            hc_send('G' + HC_SIM_X_POS + ';' + HC_SIM_X_VEL + ';' + HC_SIM_ANGLE + ';' + HC_SIM_ANGLE_VEL + '.')
 
 # reset environment: each episode starts again at the initial condition
 # independent of using software or the analog computer, we have these core variables
