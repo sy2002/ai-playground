@@ -49,24 +49,45 @@ cart to the left.
 
 ### Analog simulation of the inverse pendulum
 
-Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy
-eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam
-voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet
-clita kasd gubergren.
+Programming an analog computer is quite different from programming a classic
+stored-program digital computer as there is no algorithm controlling the 
+operation of an analog computer. Instead, an analog computer program is a 
+schematic describing how the various computing elements (such as summers,
+integrators, multipliers, coeffizient potentiometers etc.) have to be 
+interconnected in order to form an electronic model, an analogue, for the 
+problem being investigated. 
 
-![Algorithm Schematics](doc/algorithm.png)
+At first sight this looks (and feels) quite weird but it turns out that it
+is not only much more easy to program an analog computer than a digital 
+computer as there is no need to think about numerical algorithms when it comes
+to tasks like integration etc. Further, an analog computer is much more 
+energy efficient than a digital computer since all of its computing elements
+work in parallel without any need for slow memory lookups etc. Further, the
+signals on which an analog computer simulation is based are continuous 
+voltages or currents and not binary signals, so the super-linear increase of
+power consumption as is typical for digital computers does not hold for analog
+computers.
 
-Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie
-consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et
-accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit
-augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet.
+History background of analog computers can be found in this
+[great book by Bernd Ulmann](https://www.amazon.de/Analog-Computing-Bernd-Ulmann/dp/3486728970/ref=sr_1_3).
 
-![Algorithm Schematics](doc/control.png)
+A modern introduction to the programming of analog and hybrid computers is
+described in
+[this textbook](https://www.amazon.de/Analog-Computer-Programming-Gruyter-Textbook/dp/3110662078/ref=sr_1_6).
 
-At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd
-gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum
-dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor
-invidunt ut labore et dolore magna aliquyam erat, sed diam.
+The schematic shown below is the analog computer setup to simulate an inverted
+pendulum. The mathematic derivation can be found in
+[this paper](http://analogparadigm.com/downloads/alpaca_20.pdf).
+
+![Analog Program](doc/analog_program.png)
+
+The picture below shows the subprogram controlling the moving cart by means of
+a hybrid controller which couples the analog computer with a stored-program 
+digital computer by means of an USB-interface. D0 and D1 depict two digital 
+outputs of this controller and control two electronic switches by which the 
+cart can be pushed to the left or to the right.
+
+![Controler Schematics](doc/control.png)
 
 ### Digital reinforcement learning using the analog computer
 
