@@ -91,15 +91,49 @@ cart can be pushed to the left or to the right.
 
 ### Digital reinforcement learning using the analog computer
 
-Toggle between analog computer and OpenAI Gym. Serial communication. 
-Q-Learning algorithm.
+#### System architecture of the experiment
+
+[analog-cartpole.py](analog-cartpole.py) represents the digital part of this
+experiment. It is a Python 3 script that uses the good old
+[serial communication](https://en.wikipedia.org/wiki/Serial_communication)
+to control the analog computer. For being able to do so, the analog computer
+[Model 1](http://analogparadigm.com/products.html) offers an analog/digital
+interface called [Hybrid Controller](http://analogparadigm.com/downloads/hc_handbook.pdf).
+
+In our experiment, Model 1's Hybrid Controller is connected to a Mac using a
+standard USB cable. There is no driver or other additional software necessary
+to communicate between the Mac and the Hybrid Controller. The reason for that
+is, that the Hybrid Controller uses an FTDI chip to implement the serial
+communication over USB. Apple added FTDI support natively from OS X Mavericks
+(10.9) on as described in
+[Technical Note TN2315] (https://developer.apple.com/library/archive/technotes/tn2315/_index.html).
+For Windows and Linux, have a look at the 
+[installation guides](https://www.ftdichip.com/Support/Documents/InstallGuides.htm).
+
+The bottom line is, that from the perspective of our Python 3 script, the
+analog computer can be controlled easily by sending serial commands to the
+Hybrid Controller using [pySerial](https://pypi.org/project/pyserial/).
+
+#### Digital-only mode
+
+If you do not have an Analog Paradigm Model 1 analog computer handy, then
+you can also run it on any other digital computer that supports Python 3
+and [OpenAI Gym](http://gym.openai.com/). For doing so, you can toggle the
+operation mode of [analog-cartpole.py](analog-cartpole.py) by setting the
+flag `SOFTWARE_ONLY` to `True`.
+
+When doing so, we advise you to also set `PERFORM_CALIBRATION` to `True` as
+this yields much better results on OpenAI Gym's simulation and you should set
+`SINGLE_STEP_LEARNING` to `False` as single step learning is just a means of
+compensating the slowness of the Python script in the "real world realm" of
+analog computers.
+
+#### Reinforcement Learning
 
 Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy
 eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam
 voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet
 clita kasd gubergren.
-
-[analog-cartpole.py](analog-cartpole.py)
 
 Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie
 consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et
