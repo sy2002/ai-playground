@@ -102,11 +102,11 @@ interface called [Hybrid Controller](http://analogparadigm.com/downloads/hc_hand
 
 In our experiment, Model 1's Hybrid Controller is connected to a Mac using a
 standard USB cable. There is no driver or other additional software necessary
-to communicate between the Mac and the Hybrid Controller. The reason for that
-is, that the Hybrid Controller uses an FTDI chip to implement the serial
-communication over USB. Apple added FTDI support natively from OS X Mavericks
-(10.9) on as described in
-[Technical Note TN2315] (https://developer.apple.com/library/archive/technotes/tn2315/_index.html).
+to communicate between the Mac and the Hybrid Controller. The reason why this
+works so smoothly is, that the Hybrid Controller uses an FTDI chip to implement
+the serial communication over USB. Apple added FTDI support natively from OS X
+Mavericks (10.9) on as described in
+[Technical Note TN2315](https://developer.apple.com/library/archive/technotes/tn2315/_index.html).
 For Windows and Linux, have a look at the 
 [installation guides](https://www.ftdichip.com/Support/Documents/InstallGuides.htm).
 
