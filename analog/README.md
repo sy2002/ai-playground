@@ -1,15 +1,14 @@
 ## ANALOG-CARTPOLE - A hybrid analog/digital computing experiment
 
 Use digital Reinforcement Learning to learn to balance an inverse pendulum
-on a cart simulated by a Model-1 by  
+on a cart simulated on a Model-1 by  
 Analog Paradigm (http://analogparadigm.com)
 
 Done in July to September 2019. Analog part by [vaxman](http://www.vaxman.de).
 Digital part by [sy2002](http://www.sy2002.de).
 
 Watch a short introduction to this experiment on YouTube by clicking the
-image below or by using this link:   
-[https://youtu.be/jDGLh8YWvNE](https://youtu.be/jDGLh8YWvNE)
+image below or by using this link: https://youtu.be/jDGLh8YWvNE
 
 [![YouTube Link Image](doc/model-1-play.jpg)](https://youtu.be/jDGLh8YWvNE)
 
