@@ -162,7 +162,7 @@ of randomly chosen "example states" that we are calling `Exemplars` inside
 just an amount of `n` randomly chosen "situations" in which the CartPole could
 be in, and a "situation" is a random instance of
 (cart position, cart velocity, pole angle, angular velocity).
-And therefore a state `s` is nothing else than the combined "similarity"
+Therefore a state `s` is nothing else than the combined "similarity"
 of `s` to all of the `Exemplars`.
 
 The result of this approach is, that `s` is *not* represented as a four
@@ -296,7 +296,9 @@ that implements the steps shown above. The function `rl_get_Q_s_a` that is used 
 explained, yet: It uses the Linear Regression algorithm SGDRegressor to output (aka "predict")
 the currently learned version of the `Value Function` for a given pair (`s`|`a`). And `env_step`
 is modifying the environment by performing action `a`; in our case this means: The cart is
-recieving an impulse either from the left or from the right.
+recieving an impulse either from the left or from the right. Finally, `rl_max_Q_s` looks
+for the next best action, given a certain state, and returns that action together with the
+respective value of the `Value Function`.
 
 ```
 while not done:
