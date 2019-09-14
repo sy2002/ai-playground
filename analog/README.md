@@ -117,7 +117,7 @@ Hybrid Controller using [pySerial](https://pypi.org/project/pyserial/).
 #### Digital-only mode
 
 If you do not have an Analog Paradigm Model 1 analog computer handy, then
-you can also run it on any other digital computer that supports Python 3
+you can also run it on any digital computer that supports Python 3
 and [OpenAI Gym](http://gym.openai.com/). For doing so, you can toggle the
 operation mode of [analog-cartpole.py](analog-cartpole.py) by setting the
 flag `SOFTWARE_ONLY` to `True`.
@@ -130,20 +130,44 @@ analog computers.
 
 #### Reinforcement Learning
 
-Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy
-eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam
-voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet
-clita kasd gubergren.
+We apply [Reinforcement Learning](https://en.wikipedia.org/wiki/Reinforcement_learning)
+to balance the CartPole. For doing so, the following four features are used to
+feed a [Q-learning algorithm](https://en.wikipedia.org/wiki/Q-learning):
+cart position, cart velocity, pole angle and the angular velocity of the pole's tip.
 
-Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie
-consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et
-accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit
-augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet.
+As Q-learning is a model-free algorithm, it actually "does not matter for the
+algorithm", what the semantics of these for parameters/features mentioned above
+are. It "does not know" the "meaning" of a "cart position" of an "angular velocity".
+For the Q-learning algorithm, the set of these features are just the dimensions
+of the `State` within the `Environment` from which it will enable the `Agent`
+to perform the next `Action`.
 
-At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd
-gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum
-dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor
-invidunt ut labore et dolore magna aliquyam erat, sed diam.
+![Diagram explaining the basics of RL](https://upload.wikimedia.org/wikipedia/commons/1/1b/Reinforcement_learning_diagram.svg)
+
+
+* When we use a collection of (aka "network") of Radial Basis Functions (RBFs), then we can transform
+  these 4 features into n distances from the centers of the RBFs, where n = RBF_EXEMPLARS x RBF_GAMMA_COUNT
+* The "Gamma" parameter controls the "width" of the RBF's bell curve. The idea is, to use multiple RBFSamplers
+  with multiple widths to construct a network with a good variety to sample from.
+* The RBF transforms the initial 4 features into plenty of features and therefore offers a lot of "variables"
+  or something like "resolution", where a Linear Regression algorithm can calcluate the weights for.
+  In contrast, the original four features of the observation space would yield a too "low resolution".
+* The Reinforcement Learning algorithm used to learn to balance the pole is Q-Learning.
+* The "State" "s" of the Cart is obtained by using the above-mentioned RBF Network to transform the four
+  original features into the n distances from a randomly chosen amount of RBF centers (aka "Exemplars").
+  Note that it is absolutely OK, that the Exemplars are chosen randomly, because each Exemplar defines one
+  possible combination of (Cart Position, Cart Velocity, Pole Angle and Pole Velocity At Tip); and therefore
+  having lots of those random Exemplars just gives us the granularity ("resolution") we need for our Linear Regression.
+* The possible "Actions" "a" of the system are "push from left" or "push from right", aka 0 and 1.
+* For each possible action we are calculating one Value Function using Linear Regression. It can be illustrated by
+  asking the question: "For the state we are currently in, defined by the distances to the Exemplars, what is the
+  Value Function for pushing from left or puhsing from right. The larger one wins."
+
+On RBFSampler:
+
+Despite its name, the RBFSampler is actually not using any RBFs inside. I did some experiments about
+this fact. Go to https://github.com/sy2002/ai-playground/blob/master/RBFSampler-Experiment.ipynb 
+to learn more.
 
 ### Results
 
