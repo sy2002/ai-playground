@@ -21,13 +21,15 @@ from the project's root folder.
 
 ### Handwritten Digits Recognizer using a Perceptron Network
 
-<img align="left" width="100" height="100" src="http://www.fillmurray.com/100/100">
+<img align="left" width="200" height="150" src="http://www.sy2002.de/nn_screenshot.jpg">
 
 The HWD-Perceptron project was my first attempt to learn how a Perceptron works by implementing
 it from scratch. I used the very well known MIST dataset to do handwritten digits recognition. Go
 to the [HWD-Perceptron Repository](https://github.com/sy2002/HWD-Perceptron) to learn more.
 
 ### Solve Mazes
+
+<img align="right" width="150" height="150" src="http://www.sy2002.de/maze/ani1-20x20.gif">
 
 The programs `maze_runner.py` and `maze_runner_q_mp.py` in the folder [maze](maze) are
 using Reinforcement Learning to solve mazes of arbitrary sizes.
