@@ -24,8 +24,13 @@ from the project's root folder.
 <img align="left" width="200" height="150" src="http://www.sy2002.de/nn_screenshot.jpg">
 
 The HWD-Perceptron project was my first attempt to learn how a Perceptron works by implementing
-it from scratch. I used the very well known MIST dataset to do handwritten digits recognition. Go
-to the [HWD-Perceptron Repository](https://github.com/sy2002/HWD-Perceptron) to learn more.
+it from scratch. I used the very well known MIST dataset to do handwritten digits recognition.
+
+This project is a ready-to-go Python app that lets you learn more about Neural Networks and
+Machine Learning in general and more about simple Perceptron based handwritten digits
+recognition in particular.
+
+Go to the [HWD-Perceptron Repository](https://github.com/sy2002/HWD-Perceptron) to learn more.
 
 ### Solve Mazes
 
