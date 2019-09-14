@@ -136,11 +136,11 @@ feed a [Q-learning algorithm](https://en.wikipedia.org/wiki/Q-learning):
 cart position, cart velocity, pole angle and the angular velocity of the pole's tip.
 
 As Q-learning is a model-free algorithm, it actually "does not matter for the
-algorithm", what the semantics of these for parameters/features mentioned above
-are. It "does not know" the "meaning" of a "cart position" of an "angular velocity".
-For the Q-learning algorithm, the set of these features are just the dimensions
-of the `State` within the `Environment` from which it will enable the `Agent`
-to perform the next `Action`.
+algorithm", what the semantics of these four parameters/features mentioned above
+are. It "does not know" the "meaning" of a feature such as "cart position" or
+"angular velocity". For the Q-learning algorithm, the set of these features
+is just what the current `State` within the `Environment` is comprised of.
+And the `State` enables the `Agent` to decide, which `Action` to perform next.
 
 ![Diagram explaining the basics of RL](https://upload.wikimedia.org/wikipedia/commons/1/1b/Reinforcement_learning_diagram.svg)
 
