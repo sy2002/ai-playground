@@ -162,7 +162,7 @@ value function Q(s, a), will be far from optimal.
   angular velocity represented as floating point numbers between 0 and 1.
 
 * You can have an arbitrary amount of possible actions on an analog computer
-  by applying different forces for different amounts of times to push the
+  by applying different forces for different amounts of durations to push the
   cart. We chose the following simplification: There are only two possible
   actions: "Push the cart to the left" and "push the cart to the right."
   Both are implemented by applying a constant force for a constant
@@ -197,137 +197,56 @@ value function Q(s, a), will be far from optimal.
   `new_value = old_qsa + alpha * (r + GAMMA * max_q_s2a2 - old_qsa)`
   to `new_value = r + GAMMA * max_q_s2a2`.
 
+* The two functions Q_a=0(s) and Q_a=1(s) are stored in the list
+  [`rbf_net`](https://github.com/sy2002/ai-playground/blob/master/analog/analog-cartpole.py#L351)
+  that itself contains two instances of SGDRegressor. Therefore
+  `Q_a=x(s) = rbf_net[x].predict(s)`.
+
 * The CartPole challenge itself can be solved by merely performing
   a dot multiplication of a vector with four wisely chosen values with a
   vector containing the four state variables (cart position, cart velocity,
   pole angle and angular velocity). But this is not the point of this
   experiement that wants to show that a general purpose machine learning
   algorithm like Q-Learning can be efficiently trainined using an analog
-  computer as the environment simulation.
+  computer performing the environment simulation.
   Therefore it needs to be stated that the value functions Q_a=0(s) and
   Q_a=1(s) are much more complex (as they contain predictions for future
   rewards) than a mere control policy for the CartPole. And this is why we
   need a model that is complex enough to match this complexity.
   Our experiments have shown that Linear Regression using just four linear
   variables (such as the four state variables) is underfitting the
-  data. 
+  data. So if four is not enough, how much is enough? Finding out the right
+  treshold for the model complexity is one of the many hyper parameters that
+  need to be found and tuned in machine learning. A feature transformation
+  from `s = (cart position, cart velocity, pole angle, angular velocity)` to
+  `s_transformed = (f1, f2, f3, ... fn), n >> 4` is needed.
 
-This is why we decided to choose another way of representing the states: The
-current state `s` shall be defined as the distance of the four features
-(cart position, cart velocity, pole angle, angular velocity) to a big amount
-of randomly chosen "example states" that we are calling `Exemplars` inside
-[analog-cartpole.py](analog-cartpole.py). In other words, the `Exemplars` are
-just an amount of `n` randomly chosen "situations" in which the CartPole could
-be in, and a "situation" is a random instance of
-(cart position, cart velocity, pole angle, angular velocity).
-Therefore a state `s` is nothing else than the combined "similarity"
-of `s` to all of the `Exemplars`.
+* We decided to use Radial Basis Functions (RBFs) for transforming `s` into
+  `s_transformed`. An RBF is a function that maps a vector to a real number
+  by calculating (usually) the Eucledian distance from the function’s argument
+  to a previously defined center which is sometimes also called exemplar.
+  This distance is then used inside a kernel function to obtain the output
+  value of the RBF. In our implementation we chose a Gaussian kernel function
+  as described [here](https://en.wikipedia.org/wiki/Radial_basis_function).
 
-The result of this approach is, that `s` is *not* represented as a four
-dimensional vector of (cart position, cart velocity, pole angle, angular velocity).
-Instead, we are doing a feature transformation from these four features
-(i.e. 4-dimensional vector) to `n` `Exemplar`-distances, yielding an
-`n`-dimensional vector.
-
-This transformation gives us enough "resolution" (or in other words a sufficiently
-large `n` dimensional space) that allows us, to use
- to find
-the `Value Function`. We could not do this with a 4-dimensional
-linear function, as it would not be able to model the complexity of CartPole's
-Value Function and therefore the model would underfit.
-
-The next challenge is, that we are not having all input variables available to
-solve the Linear Regression in one step. Instead, Q-learning means stepwise
-learning. Therefore it is very useful that
-[scikit-learn](https://scikit-learn.org)'s Linear Regression class/algorithm
-[SGDRegressor](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDRegressor.html)
-offers a `partial_fit` function that performs one epoch of stochastic gradient descent
-on our given sample at a time. In our code, this is implemented in the function
-`rl_set_Q_s_a`, which learns the next iteration of the `Value Function` for a
-given action `a` in the current state `s`: It calls the `partial_fit` function of
-SGDRegressor.
-
-```
-def rl_set_Q_s_a(s, a, val):
-    rbf_net[a].partial_fit(rl_transform_s(s), rl_transform_val(val))
-```
- 
-Linear functions are not able to model the non-linear behaviour of CartPole. That means
-if we want to stick to Linear Regression as our means of "storing" Q-learning's results
-(i.e. finding the `Value Function`), we need to add the non-linearity in another way:
-This is why we chose to measure the distance betweeen the current "situation" of
-(cart position, cart velocity, pole angle, angular velocity) to the `Exemplars`
-by using non-linear Gaussian
-[Radial Basis Functions](https://en.wikipedia.org/wiki/Radial_basis_function).
-The shape of Gaussian Radial Basis Functions (RBFs) can be
-defined using a parameter called epsilon, here are some examples:
-
-![Wikipedia Image of RBFs](https://upload.wikimedia.org/wikipedia/commons/9/96/Gaussian_function_shape_parameter.png) 
-
-scikit-learn offers a convenient class called
-[RBFSampler](https://scikit-learn.org/stable/modules/generated/sklearn.kernel_approximation.RBFSampler.html).
-The *epsilon* parameter mentioned above is called *gamma* there. The `transform` function of RBFSampler can be used
-to transform (cart position, cart velocity, pole angle, angular velocity) to the `n` distances to the `Exemplars`
-represented by the RBFSampler and the `n_components` parameter used in RBFSampler's constructor is exactly
-the amount `n` we are talking about. In our code, `n` is called `RBF_EXEMPLARS` (250 by default).
-
-To be sure we have enough variance and "resolution", we decided to use a whole bunch of RBFSamplers, each
-of them using a different gamma parameter: The range goes from `RBF_GAMMA_MIN` (0.05 by default) to
-`RBF_GAMMA_MAX` (4.0 by default) and we are instanciating `RBF_GAMMA_COUNT` (10 by default) RBFSamplers,
-which are conveniently bundled in a [FeatureUnion](https://scikit-learn.org/stable/modules/generated/sklearn.pipeline.FeatureUnion.html).
-The FeatureUnion, which we call `rbfs` in our code, allows us to call the `transform` function of
-all those RBFSamplers within one function call and to collect the output in one 2,500 dimensional vector
-(250 RBF_EXEMPLARS x 10 RBF_GAMMA_COUNT). The `rl_transform` function is doing exactly this:
-
-```
-# the RBF network is built like this: create as many RBFSamplers as RBF_GAMMA_COUNT
-# and do so by setting the "width" parameter GAMMA of the RBFs as a linear interpolation
-# between RBF_GAMMA_MIN and RBF_GAMMA_MAX
-gammas = np.linspace(RBF_GAMMA_MIN, RBF_GAMMA_MAX, RBF_GAMMA_COUNT)
-models = [RBFSampler(n_components=RBF_EXEMPLARS, gamma=g) for g in gammas]
-
-# we will put all these RBFSamplers into a FeatureUnion, so that our Linear Regression
-# can regard them as one single feature space spanning over all "Gammas"
-transformer_list = []
-for model in models:
-    model.fit([[1.0, 1.0, 1.0, 1.0]]) # RBFSampler just needs the dimensionality, not the data itself
-    transformer_list.append((str(model), model))
-rbfs = FeatureUnion(transformer_list)     #union of all RBF exemplar's output
-
-[...]
-
-def rl_transform_s(s):
-    if scaler == None:  # during calibration, we do not have a scaler, yet
-        return rbfs.transform(np.array(s).reshape(1, -1))
-    else:
-        return rbfs.transform(scaler.transform(np.array(s).reshape(1, -1)))
-```
-
-We are not having one `Value Function` but two of them: One for each action `a`, that is possible in our
-environment. And when it comes to decide, which action to take, our agent is looking for the highest
-`Value Function` over all actions for a given state `s` and to decide which action `a` to take.
-There are two actions possible: Push the cart from the left and push the cart from
-the right. The two `Value Functions` are represented by the current approximation done by the
-Linear Regression, this is why the list `rbf_net` is defined as a list of SGDRegressors and
-why above-mentioned `rl_set_Q_s_a` function uses `rbf_net[a]`:
-
-```
-# List of possible actions that the RL agent can perform in the environment.
-# For the algorithm, it doesn't matter if 0 means right and 1 left or vice versa
-# or if there are more than two possible actions
-env_actions = [0, 1] # needs to be in ascending order with no gaps, e.g. [0, 1]
-
-[...]
-
-rbf_net = [SGDRegressor(eta0=ALPHA, power_t=ALPHA_DECAY, learning_rate='invscaling', max_iter=5, tol=float("-inf"))
-        for i in range(len(env_actions))]
-```
-
-In the analog world, a "push" is never something discrete. In contrast, to "push something into
-a direction" is more like applying a force to something for a certain period of time. And this
-is exactly what we do, when we "push" the cart, i.e. execute action `0` or action `1`.
-The constant `HC_IMPULSE_DURATION` defines how many milliseconds the force shall be applied to
-the cart when "pushing" it into a certain direction.
+* scikit-learn offers a class called
+  [`RBFSampler`](https://scikit-learn.org/stable/modules/generated/sklearn.kernel_approximation.RBFSampler.html)
+  that approximates the feature map of an RBF kernel by Monte Carlo
+  approximation of its Fourier transform. The experiments have shown that
+  RBFSampler is fast enough for our real-time requirements (after all we are
+  working with an analog computer) and that the approximation is good enough.
+  This means that inside the function
+  [`rl_transform_s`](https://github.com/sy2002/ai-playground/blob/master/analog/analog-cartpole.py#L338)
+  the four state variables are transformed to a multitude of distances to
+  RBF "exemplars" (aka "centers"). The amount of these randomly chosen
+  exemplars is specified by the variable `RBF_EXEMPLARS`. To increase the
+  variance, we are also using multiple shapes of the Gaussian functions that
+  can be specified in the constructor of `RBFSampler`. This is why the amount
+  of features that the original four features are transformed into is defined
+  as the product between the two variables `RBF_EXEMPLARS` and
+  `RBF_GAMMA_COUNT`. The following part of the
+  [source code](https://github.com/sy2002/ai-playground/blob/master/analog/analog-cartpole.py#L351)
+  clarifies how the whole concept works.
 
 The Q-learning itself is implemented pretty straightforwardly. This README.md does not contain
 an explanaton how Q-learning or Reinforcement Learning works, but is focused on the specific
