@@ -209,7 +209,7 @@ value function Q(s, a), will be far from optimal.
   Therefore it needs to be stated that the value functions Q_a=0(s) and
   Q_a=1(s) are much more complex (as they contain predictions for future
   rewards) than a mere control policy for the CartPole. And this is why we
-  need a model that is complex enough to match this complexity.
+  need a model that is itself complex enough to match this complexity.
   Our experiments have shown that Linear Regression using just four linear
   variables (such as the four state variables) is underfitting the
   data. So if four is not enough, how much is enough? Finding out the right
@@ -234,19 +234,20 @@ value function Q(s, a), will be far from optimal.
   working with an analog computer) and that the approximation is good enough.
   This means that inside the function
   [`rl_transform_s`](https://github.com/sy2002/ai-playground/blob/master/analog/analog-cartpole.py#L338)
-  the four state variables are transformed to a multitude of distances to
-  RBF "exemplars" (aka "centers"). The amount of these randomly chosen
-  exemplars is specified by the variable `RBF_EXEMPLARS`. To increase the
-  variance, we are also using multiple shapes of the Gaussian functions that
-  can be specified in the constructor of `RBFSampler`. This is why the amount
-  of features that the original four features are transformed into is defined
-  as the product between the two variables `RBF_EXEMPLARS` and
-  `RBF_GAMMA_COUNT`. The following part of the
+  the four state variables are transformed to a multitude of distances
+  relative to RBF "exemplars" (aka "centers").
+  The amount of these randomly chosen exemplars is specified by the variable
+  `RBF_EXEMPLARS`. To increase the variance, we are also using multiple shapes
+  of the Gaussian functions that can be specified in the constructor of
+  `RBFSampler`. This is why the amount of features that the original four
+  features are transformed into is defined as the product between the
+  two variables `RBF_EXEMPLARS` and `RBF_GAMMA_COUNT`.
+  The following part of the
   [source code](https://github.com/sy2002/ai-playground/blob/master/analog/analog-cartpole.py#L351)
   clarifies how the whole concept works.
 
 The Q-learning itself is implemented pretty straightforwardly. This README.md does not contain
-an explanaton how Q-learning or Reinforcement Learning works, but is focused on the specific
+an explanation how Q-learning or Reinforcement Learning works, but is focused on the specific
 implementation choices we made. So the following list gives only the high-level view on
 our implementation of the Q-learning algorithm. More details can be found in
 [Richard Sutton's and Andrew Barto's book](http://www.incompleteideas.net/book/RLbook2018trimmed.pdf).
@@ -265,14 +266,11 @@ our implementation of the Q-learning algorithm. More details can be found in
 5. If not done (i.e. the pole has fallen or the whole experiment runs a predefined amount
    of steps): Repeat and go to (1).
 
-The following code snipped is abbreviated code from [analog-cartpole.py](analog-cartpole.py)
-that implements the steps shown above. The function `rl_get_Q_s_a` that is used there has not been
-explained, yet: It uses the Linear Regression algorithm SGDRegressor to output (aka "predict")
-the currently learned version of the `Value Function` for a given pair (`s`|`a`). And `env_step`
-is modifying the environment by performing action `a`; in our case this means: The cart is
-recieving an impulse either from the left or from the right. Finally, `rl_max_Q_s` looks
-for the next best action, given a certain state, and returns that action together with the
-respective value of the `Value Function`.
+The following code snippet is abbreviated code from [analog-cartpole.py](analog-cartpole.py)
+that implements the steps shown above. `env_step` is modifying the environment
+by performing action `a`; in our case this means: The cart is recieving an impulse
+either from the left or from the right. `rl_max_Q_s` looks for the next best action,
+given a certain state, and returns that action together with the respective value of the `Value Function`.
 
 ```
 while not done:
@@ -285,7 +283,6 @@ while not done:
     s2 = observation
 
     # Q-Learning
-    old_qsa = rl_get_Q_s_a(s, a)
     # if this is not the terminal position (which has no actions), then we can proceed as normal
     if not done:
         # "Q-greedily" grab the gain of the best step forward from here
@@ -295,7 +292,7 @@ while not done:
         max_q_s2a2 = 0 # G (future rewards) of terminal position is 0 although the reward r is high
 
     # learn the new value for the Value Function
-    new_value = old_qsa + (r + GAMMA * max_q_s2a2 - old_qsa)
+    new_value = r + GAMMA * max_q_s2a2
     rl_set_Q_s_a(s, a, new_value)
 
     # next state = current state, next action is the "Q-greedy" best action
