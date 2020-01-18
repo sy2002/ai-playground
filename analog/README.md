@@ -174,9 +174,9 @@ Instead, we are doing a feature transformation from these four features
 This transformation gives us enough "resolution" (or in other words a sufficiently
 large `n` dimensional space) that allows us, to use
 [Linear Regression](https://en.wikipedia.org/wiki/Linear_regression) to find
-the `Value Function`. Obviously, we could not do this with a 4-dimensional
-linear function, as it would not be able to model the complex behaviour
-of the CartPole.
+the `Value Function`. We could not do this with a 4-dimensional
+linear function, as it would not be able to model the complexity of CartPole's
+Value Function.
 
 The next challenge is, that we are not having all input variables available to
 solve the Linear Regression in one step. Instead, Q-learning means stepwise
@@ -341,7 +341,7 @@ The following table shows how the Python script running on a standard laptop
 was able to leverage the real-time simulation of the analog computer to
 learn quickly. After for example 120 episodes, the mean steps were already
 at 4,674 and the maximum steps at 19,709 which is the equivalent of more
-than 15 minutes of successful balancing.
+than 15 minutes of successful balancing per episode.
 
 Episode|Mean Steps|Median Steps|Min. Steps|Max. Steps|Epsilon|
 -------|----------|------------|----------|----------|-------|
@@ -364,3 +364,16 @@ Episode|Mean Steps|Median Steps|Min. Steps|Max. Steps|Epsilon|
 320|5513.95|1434.50|24|33491|0.1786          
 340|6595.30|1885.00|46|43789|0.1724    
 
+The key to success was to minimize the latency introduced by the serial
+communication between the digital and the analog computer, so that the
+Q-Learning algorithm did not have to learn a lot about handling latency
+in addition to learn how to balance the pole. This was done by leveraging
+the Hybrid Controller's "bulk mode" that is able to transfer the whole
+state (cart position, cart velocity, pole angle, angular velocity) in one go.
+
+The result table also shows, that episode 260 yielded a very good "brain"
+and after episode 260, there might have been
+overfitting or other reasons for decreased performance. The Python script's
+"enhanced persistence mode" (activated by the command line parameter `-SP`)
+helps to find and store the right cutoff point for the learning because
+it stores the current state of the "brain" every few episodes.
