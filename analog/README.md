@@ -116,7 +116,7 @@ Hybrid Controller using [pySerial](https://pypi.org/project/pyserial/).
 
 #### Digital-only mode
 
-If you do not have an Analog Paradigm Model 1 analog computer handy, then
+If you do not have an Analog Paradigm Model 1 analog computer available, then
 you can also run it on any digital computer that supports Python 3
 and [OpenAI Gym](http://gym.openai.com/). For doing so, you can toggle the
 operation mode of [analog-cartpole.py](analog-cartpole.py) by setting the
@@ -178,16 +178,16 @@ the `Value Function`. Obviously, we could not do this with a 4-dimensional
 linear function, as it would not be able to model the complex behaviour
 of the CartPole.
 
-The next challenge is, that we are not having all input variables handy to
+The next challenge is, that we are not having all input variables available to
 solve the Linear Regression in one step. Instead, Q-learning means stepwise
-learning. Therefore it is very useful, that
+learning. Therefore it is very useful that
 [scikit-learn](https://scikit-learn.org)'s Linear Regression class/algorithm
 [SGDRegressor](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDRegressor.html)
 offers a `partial_fit` function that performs one epoch of stochastic gradient descent
 on our given sample at a time. In our code, this is implemented in the function
 `rl_set_Q_s_a`, which learns the next iteration of the `Value Function` for a
 given action `a` in the current state `s`: It calls the `partial_fit` function of
-SGDRegressor:
+SGDRegressor.
 
 ```
 def rl_set_Q_s_a(s, a, val):
@@ -268,8 +268,8 @@ rbf_net = [SGDRegressor(eta0=ALPHA, power_t=ALPHA_DECAY, learning_rate='invscali
 In the analog world, a "push" is never something discrete. In contrast, to "push something into
 a direction" is more like applying a force to something for a certain period of time. And this
 is exactly what we do, when we "push" the cart, i.e. execute action `0` or action `1`.
-The constant `HC_IMPULSE_DURATION` defines, how many milliseconds the force shall be applied to
-the cart, when "pushing" it into a certain direction.
+The constant `HC_IMPULSE_DURATION` defines how many milliseconds the force shall be applied to
+the cart when "pushing" it into a certain direction.
 
 The Q-learning itself is implemented pretty straightforwardly. This README.md does not contain
 an explanaton how Q-learning or Reinforcement Learning works, but is focused on the specific

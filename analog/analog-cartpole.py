@@ -58,18 +58,18 @@ if (SOFTWARE_ONLY):
 # ----------------------------------------------------------------------------
 
 # Analog simulation parameters
-HC_IMPULSE_DURATION = 10            # duration [ms] of the impulse, that influences the car
+HC_IMPULSE_DURATION = 20            # duration [ms] of the impulse, that influences the car
 HC_X_MAX            = 0.9           # maximum |x| of car, otherwise episode done
 HC_ANGLE_MAX        = 0.5           # maximum |angle| of pole, otherwise episode done (0.5 rad = 28.6°)
 
 # Hybrid Controller serial setup
 HC_PORT             = "/dev/cu.usbserial-DN050L1O"
-HC_BAUD             = 115200        
+HC_BAUD             = 250000        
 HC_BYTE             = 8
 HC_PARITY           = serial.PARITY_NONE
 HC_STOP             = serial.STOPBITS_ONE
 HC_RTSCTS           = False
-HC_TIMEOUT          = 0.02          # increase to e.g. 0.05, if you get error #2
+HC_TIMEOUT          = 2             # 20ms (0.02) should be enough, but strange things happened
 HC_BULK             = True          # use bulk communication in hc_get_sim_state()
 
 # Addresses of the environment/simulation data
@@ -89,6 +89,8 @@ HC_CMD_INIT         = "i"           # initial condition (i.e. pendulum is uprigh
 HC_CMD_OP           = "o"           # start to operate
 HC_CMD_HALT         = "h"           # halt/pause (can be resumed by HC_CMD_OP)
 HC_CMD_GETVAL       = "g"           # set address of computing element and return value and ID
+HC_CMD_BULK_DEFINE  = "G"           # set addresses of multiple elements to be returned in a bulk transfer
+HC_CMD_BULK_FETCH   = "f"           # fetch values of all addresses defined by "G"
 
 HC_RSP_RESET        = "RESET"       # HC response on HC_CMD_RESET
 
@@ -103,18 +105,27 @@ RBF_GAMMA_MAX       = 4.0           # maximum gamma
 
 CLBR_RND_EPISODES   = 500           # during calibration: number of random episodes
 CLBR_LEARN_EPISODES = 200           # during calibration: number of learning episodes
-LEARN_EPISODES      = 2000          # real learning: # of episodes to learn
+LEARN_EPISODES      = 500           # real learning: # of episodes to learn
 TEST_EPISODES       = 10            # software only: # of episodes  we use the visual rendering to test what we learned
-TEST_MAX_STEPS      = 25000         # maximum amount of steps during test/execution phase
+TEST_MAX_STEPS      = 5000          # maximum amount of steps during test/execution phase
 
 GAMMA               = 0.999         # discount factor for Q-Learning
-ALPHA               = 0.3           # initial learning rate
-ALPHA_DECAY         = 0.2           # learning rate decay
+ALPHA               = 0.6           # initial learning rate
+ALPHA_DECAY         = 0.1           # learning rate decay
 EPSILON             = 0.5           # randomness for epsilon-greedy algorithm (explore vs exploit)
 EPSILON_DECAY_t     = 0.1
-EPSILON_DECAY_m     = 18            # every episode % EPSILON_DECAY_m == 0, we increase EPSILON_DECAY_t
+EPSILON_DECAY_m     = 10            # every episode % EPSILON_DECAY_m == 0, we increase EPSILON_DECAY_t
 
 PROBE               = 20            # after how many episodes we will print the status
+
+# ----------------------------------------------------------------------------
+# Modes of program operation
+# ----------------------------------------------------------------------------
+
+MAIN_MODE_STD         = 0     # standard mode: calibrate, learn, test
+MAIN_MODE_SAVE        = 1     # like standard mode, but save calibration and learned state
+MAIN_MODE_SAVE_PROBE  = 2     # like save mode, but save every PROBE episode
+MAIN_MODE_LOAD        = 3     # execute only: load calibration and learned state and run/test it
 
 # ----------------------------------------------------------------------------
 # Serial protocol functions for Model-1 Hybrid Controller
@@ -168,7 +179,7 @@ def hc_get_sim_state():
     # bulk transfer: ask for all values that constitue the state in
     # a bulk and read them in a bulk
     if HC_BULK:
-        hc_send('f')
+        hc_send(HC_CMD_BULK_FETCH)
         (res_x_pos, res_x_vel, res_angle, res_angle_vel) = hc_receive().split(';')
         return (hc_res2float(res_x_pos), hc_res2float(res_x_vel), hc_res2float(res_angle), hc_res2float(res_angle_vel))
     else:
@@ -186,12 +197,9 @@ def hc_get_sim_state():
 def hc_reset_sim():
     hc_send(HC_CMD_INIT)
     sleep(0.05)         #time for condensators to recharge
+    hc_ser.readline()
     hc_send(HC_CMD_OP)
-    sleep(0.05)         #time for the feedback string to arrive
-
-    #TODO: instead of just flushing the serial input buffer:
-    #read and expect the correct feedback from HC
-    hc_ser.flushInput()
+    hc_ser.readline()
 
 # influence simulation by using an impulse to push the cart to the left or to
 # the right; it does not matter if "1" means left or right as long as "0" means
@@ -248,7 +256,7 @@ def env_prepare():
                 print("  received:", received)
         # for HC_BULK mode: define a readout group in the hybrid controller        
         if HC_BULK:
-            hc_send('G' + HC_SIM_X_POS + ';' + HC_SIM_X_VEL + ';' + HC_SIM_ANGLE + ';' + HC_SIM_ANGLE_VEL + '.')
+            hc_send(HC_CMD_BULK_DEFINE + HC_SIM_X_POS + ';' + HC_SIM_X_VEL + ';' + HC_SIM_ANGLE + ';' + HC_SIM_ANGLE_VEL + '.')
 
 # reset environment: each episode starts again at the initial condition
 # independent of using software or the analog computer, we have these core variables
@@ -383,7 +391,7 @@ def rl_max_Q_s(s):
             max_idx = a
     return max_idx, max_val
 
-def rl_learn(learning_duration, record_observations=False):
+def rl_learn(learning_duration, record_observations=False, op_mode=MAIN_MODE_STD, filename=None):
     if record_observations:
         recorded_obs = []
     else:
@@ -428,8 +436,11 @@ def rl_learn(learning_duration, record_observations=False):
                 a2 = a
                 max_q_s2a2 = 0 # G (future rewards) of terminal position is 0 although the reward r is high
 
-            # learn the new value for the Value Function
-            new_value = old_qsa + (r + GAMMA * max_q_s2a2 - old_qsa)
+            # Learn the new value for the Value Function
+            # Note: SGDRegresspr has a built in learning rate, so we can simplify
+            # the following Q-Learning formula by setting alpha = 1
+            # new_value = old_qsa + alpha * (r + GAMMA * max_q_s2a2 - old_qsa)
+            new_value = r + GAMMA * max_q_s2a2
             rl_set_Q_s_a(s, a, new_value)
 
             # next state = current state, next action is the "Q-greedy" best action
@@ -445,6 +456,11 @@ def rl_learn(learning_duration, record_observations=False):
                    "%d" % np.min(probe_episode_step_count),
                    "%d" % np.max(probe_episode_step_count),
                    "%0.4f" % eps)
+            if record_observations==False and op_mode==MAIN_MODE_SAVE_PROBE:
+                hc_send(HC_CMD_HALT)
+                hc_ser.readline()
+                rl_save(filename + "_" + ("%04d" % episode))
+
             probe_episode_step_count = []
 
     return recorded_obs
@@ -492,12 +508,12 @@ def main_calibrate():
 # Learning
 # ----------------------------------------------------------------------------
 
-def main_learn(save_file):
+def main_learn(save_file, mode):
     print("\nLearn:")
     print("======\n")
 
     rl_init()
-    rl_learn(LEARN_EPISODES)
+    rl_learn(learning_duration=LEARN_EPISODES, op_mode=mode, filename=save_file)
 
     if save_file:
         rl_save(save_file)
@@ -533,10 +549,6 @@ def main_test(test_duration):
 # Command line handling and tools
 # ----------------------------------------------------------------------------
 
-MAIN_MODE_STD   = 0     # standard mode: calibrate, learn, test
-MAIN_MODE_SAVE  = 1     # like standard mode, but save calibration and learned state
-MAIN_MODE_LOAD  = 2     # execute only: load calibration and learned state and run/test it
-
 def tprint(*argv):
     for arg in argv:
         print(arg.ljust(16), end="")
@@ -553,13 +565,19 @@ def parse_args():
         cmd = sys.argv[1].upper()
 
         # Save / Persistence mode
-        if cmd == "-S":
+        if cmd == "-S" or cmd=="-SP":
             filename = sys.argv[2]
             if filename:
-                print("HINT: Persistence mode active. Save to:", filename + ".scaler, " + 
-                                                                filename + ".rbfs and " +
-                                                                filename + ".rbfnet")
-            return MAIN_MODE_SAVE, filename, None
+                if cmd == "-S":
+                    return_mode = MAIN_MODE_SAVE
+                    print("HINT: Persistence mode active. Save to:", filename + ".scaler, " + 
+                                                                    filename + ".rbfs and " +
+                                                                    filename + ".rbfnet")
+                else:
+                    return_mode = MAIN_MODE_SAVE_PROBE
+                    print("HINT: Enhanced persistence mode active: Saving every %d episodes to:" % PROBE)
+                    print(filename + "_xxxx.scaler, " + filename + "_xxxx.rbfs, " + filename + "_xxxx.rbfnet")
+            return return_mode, filename, None
 
         # Load / Execution mode
         elif cmd == "-L":
@@ -592,7 +610,7 @@ env_prepare()
 if mode != MAIN_MODE_LOAD:
     if PERFORM_CALIBRATION:
         main_calibrate()
-    main_learn(filename)
+    main_learn(filename, mode)
     main_test(TEST_EPISODES)
 else:
     rl_load(filename)
