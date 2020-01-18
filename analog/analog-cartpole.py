@@ -8,6 +8,9 @@
 # Analog part done by vaxman on 2019-07-27, 2019-07-28, 2019-08-03
 # Digital part done by sy2002 on 2019-07-27, 2019-07-29, 2019-08-03, 2019-08-20
 # Changed to readout groups by vaxman on 2019-09-05
+#
+# Final successful parameter tuning and enhancements done by sy2002 and
+# vaxman that lead to a successful experiment performed on 2019-09-22 
 
 # ----------------------------------------------------------------------------
 # Global Flags
