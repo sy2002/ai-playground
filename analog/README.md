@@ -337,10 +337,11 @@ to learn more about this.
 
 ### Results
 
-At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd
-gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum
-dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor
-invidunt ut labore et dolore magna aliquyam erat, sed diam.
+The following table shows how the Python script running on a standard laptop
+was able to leverage the real-time simulation of the analog computer to
+learn quickly. After for example 120 episodes, the mean steps were already
+at 4,674 and the maximum steps at 19,709 which is the equivalent of more
+than 15 minutes of successful balancing.
 
 Episode|Mean Steps|Median Steps|Min. Steps|Max. Steps|Epsilon|
 -------|----------|------------|----------|----------|-------|
@@ -352,8 +353,14 @@ Episode|Mean Steps|Median Steps|Min. Steps|Max. Steps|Epsilon|
 100|589.35|387.00|39|2945|0.3125
 120|4674.80|2825.00|14|19709|0.2941
 140|3608.60|1708.00|105|14783|0.2778
+160|4826.75|1839.50|27|23965|0.2632          
+180|3121.75|820.50|57|17782|0.2381          
+200|2181.90|1281.00|33|9920|0.2273          
+220|4216.50|1993.50|29|26387|0.2174          
+240|3867.75|446.50|22|25592|0.2083          
+260|6535.00|713.00|121|66848|0.2000          
+280|4120.25|737.50|38|39596|0.1923          
+300|4531.75|647.50|67|28202|0.1852          
+320|5513.95|1434.50|24|33491|0.1786          
+340|6595.30|1885.00|46|43789|0.1724    
 
-Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie
-consequat, vel illum dolore eu feugiat nulla facilisis at vero eros et
-accumsan et iusto odio dignissim qui blandit praesent luptatum zzril delenit
-augue duis dolore te feugait nulla facilisi. Lorem ipsum dolor sit amet.
