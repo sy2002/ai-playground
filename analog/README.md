@@ -123,10 +123,7 @@ operation mode of [analog-cartpole.py](analog-cartpole.py) by setting the
 flag `SOFTWARE_ONLY` to `True`.
 
 When doing so, we advise you to also set `PERFORM_CALIBRATION` to `True` as
-this yields much better results on OpenAI Gym's simulation and you should set
-`SINGLE_STEP_LEARNING` to `False` as single step learning is just a means of
-compensating the slowness of the Python script in the "real world realm" of
-analog computers.
+this yields much better results on OpenAI Gym's simulation.
 
 #### Reinforcement Learning: Q-Learning
 
@@ -198,7 +195,7 @@ value function Q(s, a), will be far from optimal.
   to `new_value = r + GAMMA * max_q_s2a2`.
 
 * The two functions Q_a=0(s) and Q_a=1(s) are stored in the list
-  [`rbf_net`](https://github.com/sy2002/ai-playground/blob/master/analog/analog-cartpole.py#L351)
+  [`rbf_net`](https://github.com/sy2002/ai-playground/blob/master/analog/analog-cartpole.py#L368)
   that itself contains two instances of SGDRegressor. Therefore
   `Q_a=x(s) = rbf_net[x].predict(s)`.
 
