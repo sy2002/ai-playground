@@ -144,15 +144,73 @@ And the `State` enables the `Agent` to decide, which `Action` to perform next.
 
 ![Diagram explaining the basics of RL](https://upload.wikimedia.org/wikipedia/commons/1/1b/Reinforcement_learning_diagram.svg)
 
-#### Implementation specifics
-
 If you are new to Q-learning, then
 [this simple introduction](https://www.freecodecamp.org/news/an-introduction-to-q-learning-reinforcement-learning-14ac0b4493cc/)
 might be helpful. But in contrast to this simple example, the feature space of
 cart position, cart velocity, pole angle and angular velocity is pretty large:
 Normalizing all of them to the interval [0, 1], and each state consisting
 of these four dimensions will lead to an infinite amount of possible states.
-Therefore a naive tabular or discrete approach, will be far from optimal.
+Therefore a naive tabular or discrete approach to model the action
+value function Q(s, a), will be far from optimal.
+
+#### Implementation specifics
+
+* The current state s is equal to the `observation` obtained by querying the
+  analog computer using the function `env_step(a)` as shown
+  [here](https://github.com/sy2002/ai-playground/blob/master/analog/analog-cartpole.py#L427).
+  It consists of the cart position, cart velocity, pole angle and
+  angular velocity represented as floating point numbers between 0 and 1.
+
+* You can have an arbitrary amount of possible actions on an analog computer
+  by applying different forces for different amounts of times to push the
+  cart. We chose the following simplification: There are only two possible
+  actions: "Push the cart to the left" and "push the cart to the right."
+  Both are implemented by applying a constant force for a constant
+  period of time. The strength of the force is hard-wired at the analog
+  computer and the constant period of time is configured in the variable
+  `HC_IMPULSE_DURATION`. The function
+  [`hc_influence_sim`](https://github.com/sy2002/ai-playground/blob/master/analog/analog-cartpole.py#L210)
+  shows, how the two possible actions `0` and `1` are translated into
+  impulses that control the cart.
+
+* We use
+  [Linear Regression](https://en.wikipedia.org/wiki/Linear_regression)
+  to model the action value function Q. For each action, there is one
+  Linear Regression, so instead of having one action value function Q(s, a),
+  we are having two value functions Q_a=0(s) and Q_a=1(s). The reason for this
+  is that value functions are complex beasts and each simplification is
+  welcome to increase the chance of fast and efficient learning.
+
+* [scikit-learn](https://scikit-learn.org)'s Linear Regression class/algorithm
+  [SGDRegressor](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.SGDRegressor.html)
+  is used for the actual implementation. It conveniently offers a so called
+  `partial_fit` function that is allowing us to perform online-learning. This
+  is necessary, as the Q-Learning algorithm itself is among other things
+  based on Dynamic Programming principles and therefore cannot provide batch
+  data. Instead, after each step in each episode, we can refine our model
+  of the Q function by calling our update function
+  [`rl_set_Q_s_a`](https://github.com/sy2002/ai-playground/blob/master/analog/analog-cartpole.py#L447)
+  that itself relies on `SGDRegressor`'s `partial_fit` function. Please note
+  that SGDRegressor allows to specify a learning rate (alpha) upon
+  construction so that the calculation of the Q update value can be
+  simplified from 
+  `new_value = old_qsa + alpha * (r + GAMMA * max_q_s2a2 - old_qsa)`
+  to `new_value = r + GAMMA * max_q_s2a2`.
+
+* The CartPole challenge itself can be solved by merely performing
+  a dot multiplication of a vector with four wisely chosen values with a
+  vector containing the four state variables (cart position, cart velocity,
+  pole angle and angular velocity). But this is not the point of this
+  experiement that wants to show that a general purpose machine learning
+  algorithm like Q-Learning can be efficiently trainined using an analog
+  computer as the environment simulation.
+  Therefore it needs to be stated that the value functions Q_a=0(s) and
+  Q_a=1(s) are much more complex (as they contain predictions for future
+  rewards) than a mere control policy for the CartPole. And this is why we
+  need a model that is complex enough to match this complexity.
+  Our experiments have shown that Linear Regression using just four linear
+  variables (such as the four state variables) is underfitting the
+  data. 
 
 This is why we decided to choose another way of representing the states: The
 current state `s` shall be defined as the distance of the four features
@@ -173,10 +231,10 @@ Instead, we are doing a feature transformation from these four features
 
 This transformation gives us enough "resolution" (or in other words a sufficiently
 large `n` dimensional space) that allows us, to use
-[Linear Regression](https://en.wikipedia.org/wiki/Linear_regression) to find
+ to find
 the `Value Function`. We could not do this with a 4-dimensional
 linear function, as it would not be able to model the complexity of CartPole's
-Value Function.
+Value Function and therefore the model would underfit.
 
 The next challenge is, that we are not having all input variables available to
 solve the Linear Regression in one step. Instead, Q-learning means stepwise
