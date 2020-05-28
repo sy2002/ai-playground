@@ -59,6 +59,7 @@ everything is still kind of as you would expect from the name RBFSampler.
 
 You can also try the experiment live and interactively on Kaggle using
 [this Kaggle Kernel](https://www.kaggle.com/sy2002/rbfsampler-actually-is-not-using-any-rbfs).
+Here is an [Article on Medium](https://medium.com/@mirkoholzer/rbfsampler-actually-is-not-using-any-radial-basis-functions-rbfs-771cd38a7a6f) that nicely explains the whole topic.
 
 ### ANALOG-CARTPOLE - A hybrid analog/digital computing experiment
 
