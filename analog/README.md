@@ -6,6 +6,7 @@ Analog Paradigm (http://analogparadigm.com)
 
 Done in July to September 2019. Analog part by [vaxman](http://www.vaxman.de).
 Digital part by [sy2002](http://www.sy2002.de).
+[Download](https://arxiv.org/abs/2103.07802) the paper on arXiv.org.
 
 Watch a short introduction to this experiment on YouTube by clicking the
 image below or by using this link: https://youtu.be/jDGLh8YWvNE
